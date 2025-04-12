@@ -6,26 +6,38 @@ set -e
 set -o pipefail
 
 # --- Configuration ---
-INSTALL_RICH=true # Default to installing rich-cli and less
+# --- !!! Default changed: DO NOT install rich-cli/less by default !!! ---
+INSTALL_RICH=false # Set to false by default
+INSTALL_FLAG_PASSED=false # Track if any relevant flag was passed
 
 # --- Argument Parsing ---
-TEMP=$(getopt -o '' --long no-rich,help -n "$0" -- "$@")
+# Use getopt for better flag handling
+TEMP=$(getopt -o '' --long install-rich,no-rich,help -n "$0" -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
 unset TEMP
 
 while true; do
   case "$1" in
-    '--no-rich' ) INSTALL_RICH=false; shift ;;
+    '--install-rich' ) INSTALL_RICH=true; INSTALL_FLAG_PASSED=true; shift ;; # Explicit flag to install
+    '--no-rich' ) INSTALL_RICH=false; INSTALL_FLAG_PASSED=true; shift ;; # Explicit flag to skip (now redundant but kept for clarity)
     '--help' )
-      echo "Usage: $0 [--no-rich]"
-      echo "  Installs the 'ag' AI assistant tool and its dependencies."
-      echo "  --no-rich   Skip installation of rich-cli and less (disables Markdown rendering)."
+      echo "Usage: $0 [--install-rich | --no-rich]"
+      echo "  Installs the 'ag' AI assistant tool and its base dependencies (fish, jq, curl)."
+      echo ""
+      echo "  Options:"
+      echo "    --install-rich   Also install optional Markdown rendering tools (pipx, rich-cli, less)."
+      echo "                     (Enables -m option and Markdown viewing with -o)."
+      echo "    --no-rich        Explicitly skip optional Markdown tools (Default behavior)."
+      echo "    --help           Show this help message."
+      echo ""
+      echo "  Default behavior (if no flag is given) is to skip optional tools."
       exit 0 ;;
     '--' ) shift; break ;;
-    * ) break ;;
+    * ) break ;; # Catch unexpected arguments if any slip through getopt
   esac
 done
+
 
 # --- Language Selection ---
 SCRIPT_LANG=""
@@ -41,8 +53,8 @@ echo "Language set to: $SCRIPT_LANG"
 echo "语言设置为: $SCRIPT_LANG"
 echo
 
-# --- Message Definitions (Same as previous version) ---
-# ... (Message definitions remain the same) ...
+# --- Message Definitions ---
+# (Messages adjusted slightly for the new default)
 # --- English Messages ---
 MSG_ERR_NOROOT_EN="This script should not be run as root. Please run as your regular user."
 MSG_ERR_NOAPT_EN="This script requires 'apt' package manager (Debian/Ubuntu based systems)."
@@ -58,11 +70,11 @@ MSG_WARN_PIPX_PATH_FAILED_EN="pipx ensurepath command failed. You might need to 
 MSG_WARN_PIPX_PATH_RESTART_EN="Check pipx documentation or run 'pipx ensurepath' again after restarting your shell."
 MSG_INFO_PIPX_RESTART_NOTE_EN="pipx setup command executed. You might need to restart your shell or source ~/.profile for PATH changes to take effect."
 MSG_INFO_INSTALL_RICH_EN="Installing rich-cli using pipx..."
-MSG_INFO_RICH_FOUND_EN="'rich' command already found. Skipping installation."
+MSG_INFO_RICH_FOUND_EN="'rich' command already found. Assuming it's functional." # Adjusted message
 MSG_INFO_RICH_INSTALLED_EN="rich-cli installed successfully via pipx."
 MSG_WARN_RICH_NOT_FOUND_EN="Installed rich-cli via pipx, but 'rich' command not found immediately. Restart your shell or check PATH."
 MSG_ERR_RICH_INSTALL_FAILED_EN="Failed to install rich-cli using pipx."
-MSG_INFO_SKIPPING_RICH_EN="Skipping installation of rich-cli and less as requested."
+MSG_INFO_SKIPPING_RICH_EN="Skipping installation of optional Markdown tools (rich-cli, less) by default or request." # Adjusted message
 MSG_INFO_CREATE_FISH_DIRS_EN="Creating Fish configuration directories (if they don't exist)..."
 MSG_ERR_CREATE_FISH_DIRS_FAILED_EN="Failed to create Fish function directory: \$1"
 MSG_INFO_FISH_DIR_ENSURED_EN="Directory ensured: \$1"
@@ -81,7 +93,7 @@ MSG_INFO_FISH_DEFAULT_EN="   - If Fish IS your default shell, simply open a new 
 MSG_INFO_FISH_CHSH_EN="   - (Optional) To make Fish your default shell permanently, run: chsh -s \"\$(command -v fish)\""
 MSG_INFO_EXAMPLE_USAGE_EN="3. Example Usage:"
 MSG_INFO_ENJOY_EN="Enjoy your AI assistant!"
-MSG_INFO_RICH_DISABLED_NOTE_EN="Note: Markdown rendering (-m, -o) requires rich-cli and less, which were skipped."
+MSG_INFO_RICH_DISABLED_NOTE_EN="Note: Optional Markdown rendering tools were not installed. Features requiring them (-m, -o viewing) will not work unless you install rich-cli and less manually or re-run setup with --install-rich." # Adjusted message
 
 # --- Chinese Messages (中文消息) ---
 MSG_ERR_NOROOT_ZH="请不要以 root 用户身份运行此脚本。请使用您的普通用户运行。"
@@ -98,11 +110,11 @@ MSG_WARN_PIPX_PATH_FAILED_ZH="pipx ensurepath 命令失败。您可能需要手�
 MSG_WARN_PIPX_PATH_RESTART_ZH="请查阅 pipx 文档或在重启 shell 后再次运行 'pipx ensurepath'。"
 MSG_INFO_PIPX_RESTART_NOTE_ZH="pipx 设置命令已执行。您可能需要重启 shell 或 source ~/.profile 以使 PATH 更改生效。"
 MSG_INFO_INSTALL_RICH_ZH="正在使用 pipx 安装 rich-cli..."
-MSG_INFO_RICH_FOUND_ZH="已找到 'rich' 命令。跳过安装。"
+MSG_INFO_RICH_FOUND_ZH="已找到 'rich' 命令。假定其可用。" # Adjusted message
 MSG_INFO_RICH_INSTALLED_ZH="已通过 pipx 成功安装 rich-cli。"
 MSG_WARN_RICH_NOT_FOUND_ZH="已通过 pipx 安装 rich-cli，但未能立即找到 'rich' 命令。请重启 shell 或检查 PATH。"
 MSG_ERR_RICH_INSTALL_FAILED_ZH="使用 pipx 安装 rich-cli 失败。"
-MSG_INFO_SKIPPING_RICH_ZH="已根据请求跳过安装 rich-cli 和 less。"
+MSG_INFO_SKIPPING_RICH_ZH="默认或根据请求跳过安装可选的 Markdown 工具 (rich-cli, less)。" # Adjusted message
 MSG_INFO_CREATE_FISH_DIRS_ZH="正在创建 Fish 配置目录 (如果不存在)..."
 MSG_ERR_CREATE_FISH_DIRS_FAILED_ZH="创建 Fish 函数目录失败: \$1"
 MSG_INFO_FISH_DIR_ENSURED_ZH="目录已确保存在: \$1"
@@ -121,25 +133,19 @@ MSG_INFO_FISH_DEFAULT_ZH="   - 如果 Fish 是您的默认 shell，只需打开�
 MSG_INFO_FISH_CHSH_ZH="   - (可选) 要将 Fish 永久设置为默认 shell，请运行: chsh -s \"\$(command -v fish)\""
 MSG_INFO_EXAMPLE_USAGE_ZH="3. 使用示例："
 MSG_INFO_ENJOY_ZH="祝您使用 AI 助手愉快！"
-MSG_INFO_RICH_DISABLED_NOTE_ZH="注意：Markdown 渲染 (-m, -o) 需要 rich-cli 和 less，这些已被跳过安装。"
+MSG_INFO_RICH_DISABLED_NOTE_ZH="注意：未安装可选的 Markdown 渲染工具。需要这些工具的功能 (-m, -o 查看) 将无法工作，除非您手动安装 rich-cli 和 less 或使用 --install-rich 重新运行安装脚本。" # Adjusted message
 
 
 # --- Helper Function for Messages (Corrected version) ---
 print_message() {
-    local key=$1
-    shift
-    local msg_var_en="MSG_${key}_EN"
-    local msg_var_zh="MSG_${key}_ZH"
-    local chosen_msg=""
+    local key=$1; shift; local msg_var_en="MSG_${key}_EN"; local msg_var_zh="MSG_${key}_ZH"; local chosen_msg=""
     if [[ "$SCRIPT_LANG" == "zh" ]] && declare -p "$msg_var_zh" &>/dev/null; then chosen_msg="${!msg_var_zh}"; elif declare -p "$msg_var_en" &>/dev/null; then chosen_msg="${!msg_var_en}"; else echo "WARN: Message key '$key' not found." >&2; return 1; fi;
     local i=1; for arg in "$@"; do escaped_arg=$(echo "$arg" | sed -e 's/[\/&]/\\&/g'); chosen_msg=$(echo "$chosen_msg" | sed "s|\\\$$i|$escaped_arg|g"); i=$((i + 1)); done; echo "$chosen_msg"
 }
-
 # --- Wrapper Functions ---
 print_info() { print_message "$@"; }
 print_warning() { print_message "$@" >&2; }
 print_error() { print_message "$@" >&2; exit 1; }
-
 # Function to check if a command exists
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
@@ -154,37 +160,30 @@ if ! command_exists apt; then print_error ERR_NOAPT; fi
 
 # --- Main Setup Logic ---
 print_info INFO_START
-
-# 1. Update package lists and install base packages
 print_info INFO_UPDATE_APT
 sudo apt update || print_error ERR_UPDATE_APT_FAILED
-
 print_info INFO_INSTALL_PKGS
 sudo apt install -y fish jq curl || print_error ERR_INSTALL_PKGS_FAILED
 print_info INFO_PKGS_INSTALLED
 
-# 2. Conditionally install Markdown rendering dependencies
+# Conditionally install Markdown rendering dependencies
 if [[ "$INSTALL_RICH" == true ]]; then
-    print_info INFO_INSTALL_PKGS_RICH
-    sudo apt install -y pipx less || print_error ERR_INSTALL_PKGS_FAILED
-    print_info INFO_SETUP_PIPX
-    if ! pipx ensurepath; then print_warning WARN_PIPX_PATH_FAILED; print_warning WARN_PIPX_PATH_RESTART; fi
-    print_info INFO_PIPX_RESTART_NOTE
-    print_info INFO_INSTALL_RICH
-    if command_exists rich; then print_info INFO_RICH_FOUND; else if pipx install rich-cli; then print_info INFO_RICH_INSTALLED; if ! command_exists rich; then print_warning WARN_RICH_NOT_FOUND; fi; else print_error ERR_RICH_INSTALL_FAILED; fi; fi
+    print_info INFO_INSTALL_PKGS_RICH; sudo apt install -y pipx less || print_error ERR_INSTALL_PKGS_FAILED
+    print_info INFO_SETUP_PIPX; if ! pipx ensurepath; then print_warning WARN_PIPX_PATH_FAILED; print_warning WARN_PIPX_PATH_RESTART; fi; print_info INFO_PIPX_RESTART_NOTE
+    print_info INFO_INSTALL_RICH; if command_exists rich; then print_info INFO_RICH_FOUND; else if pipx install rich-cli; then print_info INFO_RICH_INSTALLED; if ! command_exists rich; then print_warning WARN_RICH_NOT_FOUND; fi; else print_error ERR_RICH_INSTALL_FAILED; fi; fi
 else
-    print_info INFO_SKIPPING_RICH
+    # Only print skipping message if no explicit flag was passed or if --no-rich was passed
+    # if [[ "$INSTALL_FLAG_PASSED" == false || "$INSTALL_RICH" == false ]]; then
+         print_info INFO_SKIPPING_RICH
+    # fi
 fi
 
-# 3. Create Fish configuration directories
 print_info INFO_CREATE_FISH_DIRS
 mkdir -p "$FISH_FUNC_DIR" || print_error ERR_CREATE_FISH_DIRS_FAILED "$FISH_FUNC_DIR"
 print_info INFO_FISH_DIR_ENSURED "$FISH_FUNC_DIR"
-
-# 4. Create the ag.fish function file
 print_info INFO_CREATE_AG_FILE
 
-# --- !!! CORRECTED ag.fish content embedded below !!! ---
+# --- !!! FINAL CORRECTED ag.fish content embedded below !!! ---
 cat << 'EOF' > "$AG_SCRIPT_PATH"
 # 函数：ag - 向 OpenRouter API 提问，支持流式、多文件上下文、保存响应、Markdown 渲染
 # 用法: ag [-s <ctx>] [-l] [-d <ctx>] [-m] [-o <file>] [-h] "你的问题是什么？"
@@ -284,12 +283,14 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
     if not command -q jq; echo "错误：需要 'jq'。" >&2; return 1; end
     if set -q _flag_output; or set -q _flag_markdown
         if not command -q rich
-            echo "错误：选项 -o 或 -m 需要 'rich-cli'。请确认已安装或重新运行安装脚本不带 --no-rich。" >&2
+            echo "错误：选项 -o 或 -m 需要 'rich-cli'。请确认已安装或重新运行安装脚本并使用 --install-rich。" >&2 # Updated help message
             return 1
         end
     end
     if set -q _flag_markdown; and not set -q _flag_output
-        if not command -q less; echo "错误：选项 -m (无 -o) 需要 'less'。" >&2; return 1; end
+        if not command -q less; echo "错误：选项 -m (无 -o) 需要 'less'。请确认已安装或重新运行安装脚本并使用 --install-rich。" >&2 # Updated help message
+            return 1
+        end
     end
 
     # --- 参数和 Prompt 处理 ---
@@ -325,21 +326,21 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
 
     # --- 请求准备 ---
     set -l current_call_messages (jq -n --arg content "$system_prompt" '[{"role": "system", "content": $content}]')
-    if test $status -ne 0; echo "错误: 构建系统消息失败。" >&2; return 1; end
+    if test $status -ne 0; echo "错误: 构建系统消息失败。" >&2; return 1; end # Corrected single line if
     if test -n "$messages_json_array"; and echo "$messages_json_array" | jq -e 'type == "array"' > /dev/null 2>&1 # 合并有效历史
         set current_call_messages (echo $current_call_messages $messages_json_array | jq -s '.[0] + .[1]')
-        if test $status -ne 0; echo "错误: 合并历史消息失败。" >&2; return 1; end
+        if test $status -ne 0; echo "错误: 合并历史消息失败。" >&2; return 1; end # Corrected single line if
     end
     set current_call_messages (echo $current_call_messages | jq --arg content "$user_prompt" '. + [{"role": "user", "content": $content}]')
-    if test $status -ne 0; echo "错误: 添加用户消息失败。" >&2; return 1; end
+    if test $status -ne 0; echo "错误: 添加用户消息失败。" >&2; return 1; end # Corrected single line if
 
     # --- 构建 API 请求体 ---
     set -l json_payload (jq -n --arg model "$model_name" --argjson messages "$current_call_messages" '{"model": $model, "messages": $messages, "stream": true}')
-    if test $status -ne 0; echo "错误：使用 jq 构建最终 JSON 载荷失败。" >&2; return 1; end
+    if test $status -ne 0; echo "错误：使用 jq 构建最终 JSON 载荷失败。" >&2; return 1; end # Corrected single line if
 
     # --- API 调用和流式处理 ---
     echo "🤔 正在向 cry 的赛博助手 $model_name 请求帮助😎..." >&2
-    if test -n "$selected_context_name"; echo "(使用上下文: $selected_context_name)" >&2; end # Display context name if used
+    if test -n "$selected_context_name"; echo "(使用上下文: $selected_context_name)" >&2; end
     if not set -q _flag_output; and not set -q _flag_markdown; echo "🤖 :"; end
 
     set -l full_response ""
@@ -400,7 +401,10 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
         if test $jq_status -eq 0
             if test "$updated_context_json" != "$messages_json_array" # 仅当内容变化时写入
                  printf '%s\n' "$updated_context_json" > "$context_file_to_save"
-                 if test $status -ne 0; echo "错误：无法将更新后的上下文写入文件 '$context_file_to_save'" >&2; end
+                 # --- CORRECTED: Use multi-line if ---
+                 if test $status -ne 0
+                    echo "错误：无法将更新后的上下文写入文件 '$context_file_to_save'" >&2
+                 end
             fi
         else; echo "错误：使用 jq 更新内存中的上下文失败 (状态码: $jq_status)。上下文未保存到文件。" >&2; end
     end
@@ -424,7 +428,7 @@ fi
 # --- Final Instructions ---
 echo ""
 print_info INFO_SETUP_COMPLETE
-print_info INFO_SEPARATOR # Use a key for the separator
+print_info INFO_SEPARATOR
 echo ""
 print_info INFO_NEXT_STEPS
 echo ""
