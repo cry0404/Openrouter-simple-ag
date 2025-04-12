@@ -36,7 +36,6 @@ An automated setup script is provided to install dependencies and the `ag` funct
 
 1.  **Download the Setup Script:**
     ```bash
-    # Download directly from your repository
     curl -o setup_ag_tool.sh https://raw.githubusercontent.com/cry0404/Openrouter-simple-ag/main/setup_ag_tool.sh
     # --- OR ---
     # Clone the repository and navigate into it
@@ -184,7 +183,6 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
 
 1.  **下载安装脚本:**
     ```bash
-    # 直接从您的仓库下载
     curl -o setup_ag_tool.sh https://raw.githubusercontent.com/cry0404/Openrouter-simple-ag/main/setup_ag_tool.sh
     # --- 或者 ---
     # 克隆仓库并进入目录
