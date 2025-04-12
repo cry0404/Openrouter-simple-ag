@@ -7,13 +7,38 @@ set -e
 # Prevent errors in pipelines from being masked.
 set -o pipefail
 
+# --- Configuration ---
+INSTALL_RICH=true # Default to installing rich-cli and less
+
+# --- Argument Parsing ---
+TEMP=$(getopt -o '' --long no-rich,help -n "$0" -- "$@")
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+# Note the quotes around $TEMP: they are essential!
+eval set -- "$TEMP"
+# Clear $TEMP
+unset TEMP
+
+while true; do
+  case "$1" in
+    '--no-rich' ) INSTALL_RICH=false; shift ;;
+    '--help' )
+      echo "Usage: $0 [--no-rich]"
+      echo "  Installs the 'ag' AI assistant tool and its dependencies."
+      echo "  --no-rich   Skip installation of rich-cli and less (disables Markdown rendering)."
+      exit 0 ;;
+    '--' ) shift; break ;;
+    * ) break ;;
+  esac
+done
+
+
 # --- Language Detection ---
 SCRIPT_LANG="en" # Default to English
 if [[ "${LANG}" == "zh"* ]]; then
     SCRIPT_LANG="zh"
 fi
 
-# --- Message Definitions ---
+# --- Message Definitions (Same as previous version) ---
 
 # --- English Messages ---
 MSG_ERR_NOROOT_EN="This script should not be run as root. Please run as your regular user."
@@ -21,7 +46,8 @@ MSG_ERR_NOAPT_EN="This script requires 'apt' package manager (Debian/Ubuntu base
 MSG_INFO_START_EN="Starting setup for the 'ag' AI assistant tool..."
 MSG_INFO_UPDATE_APT_EN="Updating package lists (requires sudo)..."
 MSG_ERR_UPDATE_APT_FAILED_EN="Failed to update package lists."
-MSG_INFO_INSTALL_PKGS_EN="Installing required packages: fish, jq, curl, pipx (requires sudo)..."
+MSG_INFO_INSTALL_PKGS_EN="Installing base packages: fish, jq, curl (requires sudo)..."
+MSG_INFO_INSTALL_PKGS_RICH_EN="Installing optional packages for Markdown: pipx, less (requires sudo)..."
 MSG_ERR_INSTALL_PKGS_FAILED_EN="Failed to install required packages."
 MSG_INFO_PKGS_INSTALLED_EN="System packages installed successfully."
 MSG_INFO_SETUP_PIPX_EN="Setting up pipx..."
@@ -33,6 +59,7 @@ MSG_INFO_RICH_FOUND_EN="'rich' command already found. Skipping installation."
 MSG_INFO_RICH_INSTALLED_EN="rich-cli installed successfully via pipx."
 MSG_WARN_RICH_NOT_FOUND_EN="Installed rich-cli via pipx, but 'rich' command not found immediately. Restart your shell or check PATH."
 MSG_ERR_RICH_INSTALL_FAILED_EN="Failed to install rich-cli using pipx."
+MSG_INFO_SKIPPING_RICH_EN="Skipping installation of rich-cli and less as requested."
 MSG_INFO_CREATE_FISH_DIRS_EN="Creating Fish configuration directories (if they don't exist)..."
 MSG_ERR_CREATE_FISH_DIRS_FAILED_EN="Failed to create Fish function directory:"
 MSG_INFO_FISH_DIR_ENSURED_EN="Directory ensured:"
@@ -50,6 +77,7 @@ MSG_INFO_FISH_DEFAULT_EN="   - If Fish IS your default shell, simply open a new 
 MSG_INFO_FISH_CHSH_EN="   - (Optional) To make Fish your default shell permanently, run: chsh -s \"\$(command -v fish)\""
 MSG_INFO_EXAMPLE_USAGE_EN="3. Example Usage:"
 MSG_INFO_ENJOY_EN="Enjoy your AI assistant!"
+MSG_INFO_RICH_DISABLED_NOTE_EN="Note: Markdown rendering (-m, -o) requires rich-cli and less, which were skipped."
 
 # --- Chinese Messages (中文消息) ---
 MSG_ERR_NOROOT_ZH="请不要以 root 用户身份运行此脚本。请使用您的普通用户运行。"
@@ -57,7 +85,8 @@ MSG_ERR_NOAPT_ZH="此脚本需要 'apt' 包管理器 (适用于 Debian/Ubuntu �
 MSG_INFO_START_ZH="开始设置 'ag' AI 助手工具..."
 MSG_INFO_UPDATE_APT_ZH="正在更新软件包列表 (需要 sudo 权限)..."
 MSG_ERR_UPDATE_APT_FAILED_ZH="更新软件包列表失败。"
-MSG_INFO_INSTALL_PKGS_ZH="正在安装所需软件包: fish, jq, curl, pipx (需要 sudo 权限)..."
+MSG_INFO_INSTALL_PKGS_ZH="正在安装基础软件包: fish, jq, curl (需要 sudo 权限)..."
+MSG_INFO_INSTALL_PKGS_RICH_ZH="正在安装 Markdown 功能所需的可选软件包: pipx, less (需要 sudo 权限)..."
 MSG_ERR_INSTALL_PKGS_FAILED_ZH="安装所需软件包失败。"
 MSG_INFO_PKGS_INSTALLED_ZH="系统软件包安装成功。"
 MSG_INFO_SETUP_PIPX_ZH="正在设置 pipx..."
@@ -69,6 +98,7 @@ MSG_INFO_RICH_FOUND_ZH="已找到 'rich' 命令。跳过安装。"
 MSG_INFO_RICH_INSTALLED_ZH="已通过 pipx 成功安装 rich-cli。"
 MSG_WARN_RICH_NOT_FOUND_ZH="已通过 pipx 安装 rich-cli，但未能立即找到 'rich' 命令。请重启 shell 或检查 PATH。"
 MSG_ERR_RICH_INSTALL_FAILED_ZH="使用 pipx 安装 rich-cli 失败。"
+MSG_INFO_SKIPPING_RICH_ZH="已根据请求跳过安装 rich-cli 和 less。"
 MSG_INFO_CREATE_FISH_DIRS_ZH="正在创建 Fish 配置目录 (如果不存在)..."
 MSG_ERR_CREATE_FISH_DIRS_FAILED_ZH="创建 Fish 函数目录失败:"
 MSG_INFO_FISH_DIR_ENSURED_ZH="目录已确保存在:"
@@ -86,26 +116,38 @@ MSG_INFO_FISH_DEFAULT_ZH="   - 如果 Fish 是您的默认 shell，只需打开�
 MSG_INFO_FISH_CHSH_ZH="   - (可选) 要将 Fish 永久设置为默认 shell，请运行: chsh -s \"\$(command -v fish)\""
 MSG_INFO_EXAMPLE_USAGE_ZH="3. 使用示例："
 MSG_INFO_ENJOY_ZH="祝您使用 AI 助手愉快！"
+MSG_INFO_RICH_DISABLED_NOTE_ZH="注意：Markdown 渲染 (-m, -o) 需要 rich-cli 和 less，这些已被跳过安装。"
 
 
 # --- Helper Function for Messages ---
 print_message() {
     local key=$1
+    shift # Remove the key from arguments
     local msg_var_en="MSG_${key}_EN"
     local msg_var_zh="MSG_${key}_ZH"
+    local chosen_msg=""
+
     if [[ "$SCRIPT_LANG" == "zh" ]] && [[ -v "$msg_var_zh" ]]; then
-        echo "${!msg_var_zh}" # Use indirect expansion
+        chosen_msg="${!msg_var_zh}"
     elif [[ -v "$msg_var_en" ]]; then
-         echo "${!msg_var_en}"
+         chosen_msg="${!msg_var_en}"
     else
-         echo "WARN: Message key '$key' not found." >&2 # Fallback warning
+         echo "WARN: Message key '$key' not found." >&2
+         return
     fi
+    # Replace placeholders like $1, $2 with actual arguments passed
+    local i=1
+    for arg in "$@"; do
+        chosen_msg="${chosen_msg//\$$i/$arg}" # Simple placeholder replacement
+        i=$((i + 1))
+    done
+    echo "$chosen_msg"
 }
 
 # --- Wrapper Functions ---
-print_info() { print_message "$1"; }
-print_warning() { print_message "$1" >&2; }
-print_error() { print_message "$1" >&2; exit 1; }
+print_info() { print_message "$@"; }
+print_warning() { print_message "$@" >&2; }
+print_error() { print_message "$@" >&2; exit 1; }
 
 # Function to check if a command exists
 command_exists() {
@@ -116,79 +158,81 @@ command_exists() {
 FISH_CONFIG_DIR="$HOME/.config/fish"
 FISH_FUNC_DIR="$FISH_CONFIG_DIR/functions"
 AG_SCRIPT_PATH="$FISH_FUNC_DIR/ag.fish"
-FISH_CONFIG_PATH="$FISH_CONFIG_DIR/config.fish"
-# DEFAULT_AI_RESPONSE_DIR="$HOME/AI_Responses" # Used only in optional config.fish creation
-
 
 # --- Pre-checks ---
-if [[ $EUID -eq 0 ]]; then
-   print_error ERR_NOROOT
-fi
-
-if ! command_exists apt; then
-    print_error ERR_NOAPT
-fi
+if [[ $EUID -eq 0 ]]; then print_error ERR_NOROOT; fi
+if ! command_exists apt; then print_error ERR_NOAPT; fi
 
 # --- Main Setup Logic ---
 print_info INFO_START
 
-# 1. Update package lists and install required packages
+# 1. Update package lists and install base packages
 print_info INFO_UPDATE_APT
 sudo apt update || print_error ERR_UPDATE_APT_FAILED
 
 print_info INFO_INSTALL_PKGS
-sudo apt install -y fish jq curl pipx || print_error ERR_INSTALL_PKGS_FAILED
+sudo apt install -y fish jq curl || print_error ERR_INSTALL_PKGS_FAILED
 print_info INFO_PKGS_INSTALLED
 
-# 2. Setup pipx
-print_info INFO_SETUP_PIPX
-if ! pipx ensurepath; then
-    print_warning WARN_PIPX_PATH_FAILED
-    print_warning WARN_PIPX_PATH_RESTART
-fi
-print_info INFO_PIPX_RESTART_NOTE
+# 2. Conditionally install Markdown rendering dependencies
+if [[ "$INSTALL_RICH" == true ]]; then
+    print_info INFO_INSTALL_PKGS_RICH
+    sudo apt install -y pipx less || print_error ERR_INSTALL_PKGS_FAILED
 
-# 3. Install rich-cli using pipx
-print_info INFO_INSTALL_RICH
-if command_exists rich; then
-    print_info INFO_RICH_FOUND
-else
-    if pipx install rich-cli; then
-        print_info INFO_RICH_INSTALLED
-        if ! command_exists rich; then
-             print_warning WARN_RICH_NOT_FOUND
-        fi
-    else
-        print_error ERR_RICH_INSTALL_FAILED
+    print_info INFO_SETUP_PIPX
+    if ! pipx ensurepath; then
+        print_warning WARN_PIPX_PATH_FAILED
+        print_warning WARN_PIPX_PATH_RESTART
     fi
+    print_info INFO_PIPX_RESTART_NOTE
+
+    print_info INFO_INSTALL_RICH
+    if command_exists rich; then
+        print_info INFO_RICH_FOUND
+    else
+        if pipx install rich-cli; then
+            print_info INFO_RICH_INSTALLED
+            if ! command_exists rich; then
+                 print_warning WARN_RICH_NOT_FOUND
+            fi
+        else
+            print_error ERR_RICH_INSTALL_FAILED
+        fi
+    fi
+else
+    print_info INFO_SKIPPING_RICH
 fi
 
-# 4. Create Fish configuration directories
+# 3. Create Fish configuration directories
 print_info INFO_CREATE_FISH_DIRS
 mkdir -p "$FISH_FUNC_DIR" || print_error ERR_CREATE_FISH_DIRS_FAILED "$FISH_FUNC_DIR"
 print_info INFO_FISH_DIR_ENSURED "$FISH_FUNC_DIR"
 
-# 5. Create the ag.fish function file with embedded content
+# 4. Create the ag.fish function file (Embedded content remains the same)
 print_info INFO_CREATE_AG_FILE
 
-# Use cat with HEREDOC 'EOF' to prevent variable expansion inside the script content
-# Note: The ag.fish content itself remains in English for simplicity
 cat << 'EOF' > "$AG_SCRIPT_PATH"
-# 函数：ag - 向 OpenRouter API 提问，支持流式、保存并用 rich 打开文件、或仅终端渲染
-# 用法: ag [-c|--context] [-r|--reset] [-m] [-o <file>] [-h] "你的问题是什么？"
+# 函数：ag - 向 OpenRouter API 提问，支持流式、多文件上下文、保存响应、Markdown 渲染
+# 用法: ag [-s <ctx>] [-l] [-d <ctx>] [-m] [-o <file>] [-h] "你的问题是什么？"
 # 警告：此命令名 'ag' 可能覆盖 The Silver Searcher 工具！
-function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/rich查看、终端Markdown渲染"
+function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文、保存/rich查看、终端Markdown渲染"
+
+    # --- 配置 ---
+    set -l CONTEXT_DIR "$HOME/.local/share/ag_contexts"
+    mkdir -p "$CONTEXT_DIR" # 确保上下文目录存在
+    # --- 配置结束 ---
 
     # --- 参数解析 ---
-    set -l options (fish_opt -s c -l context)
-    set -l options $options (fish_opt -s r -l reset)
-    set -l options $options (fish_opt -s m -l markdown) # 终端渲染选项
-    set -l options $options (fish_opt -s o -l output -r) # 保存并用 rich 打开选项
-    set -l options $options (fish_opt -s h -l help)
+    set -l options (fish_opt -s l -l list)        # 列出上下文
+    set -l options $options (fish_opt -s s -l select -r) # 选择/创建上下文 (需要名字)
+    set -l options $options (fish_opt -s d -l delete -r) # 删除上下文 (需要名字)
+    set -l options $options (fish_opt -s m -l markdown)    # 终端渲染 Markdown
+    set -l options $options (fish_opt -s o -l output -r)    # 保存当前响应到文件
+    set -l options $options (fish_opt -s h -l help)        # 帮助
     argparse $options -- $argv
     if test $status -ne 0; return 1; end
 
-    # --- 处理帮助选项 ---
+    # --- 处理独占操作: List / Delete / Help ---
     if set -q _flag_help
         echo "用法: ag [选项] \"<你的问题>\""
         echo ""
@@ -199,26 +243,48 @@ function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/
         echo "警告：此命令名 'ag' 可能覆盖 The Silver Searcher 工具。"
         echo ""
         echo "选项:"
-        printf "  %-25s %s\n" "-c, --context" "使用并更新对话上下文"
-        printf "  %-25s %s\n" "-r, --reset" "在提问前重置对话上下文"
-        printf "  %-25s %s\n" "-o <路径>, --output <路径>" "保存 Markdown 到<路径>并用 'rich -m' 打开"
-        printf "  %-25s %s\n" " " "  (路径处理方式同之前版本，支持默认目录)"
-        printf "  %-25s %s\n" "-m, --markdown" "仅在终端渲染 Markdown (无 -o 时生效)"
+        printf "  %-25s %s\n" "-s <名称>, --select <名称>" "选择或创建指定名称的上下文进行对话"
+        printf "  %-25s %s\n" " " "  (对话结束后会自动保存回该文件)"
+        printf "  %-25s %s\n" "-l, --list" "列出所有已保存的上下文名称"
+        printf "  %-25s %s\n" "-d <名称>, --delete <名称>" "删除指定名称的上下文文件"
+        printf "  %-25s %s\n" "-m, --markdown" "请求 Markdown 格式并在终端渲染 (需 rich/less)"
+        printf "  %-25s %s\n" "-o <路径>, --output <路径>" "将本次 AI 响应保存到指定文件"
+        printf "  %-25s %s\n" " " "  (若同时用 -m 或默认, 请求 Markdown; 否则纯文本)" # Simplified logic
+        printf "  %-25s %s\n" " " "  (保存前会尝试创建目录 (mkdir -p))"
+        printf "  %-25s %s\n" " " "  (保存后会尝试用 'rich' 打开文件)"
         printf "  %-25s %s\n" "-h, --help" "显示此帮助信息并退出"
         echo ""
-        echo "配置: 可选设置环境变量 \$AG_DEFAULT_OUTPUT_DIR 指定默认保存目录。"
-        echo "      示例 (config.fish): set -gx AG_DEFAULT_OUTPUT_DIR \"\$HOME/AI_Responses\""
+        echo "上下文存储目录: $CONTEXT_DIR"
+        echo "默认输出目录 (\$AG_DEFAULT_OUTPUT_DIR): "(set -q AG_DEFAULT_OUTPUT_DIR && echo $AG_DEFAULT_OUTPUT_DIR || echo 未设置)
         echo ""
-        echo "依赖: jq, rich-cli (推荐 pipx install). 可选依赖: less (用于 -m 无 -o)"
+        echo "依赖: jq. 可选: rich-cli, less (用于 -m 无 -o)"
         echo ""
         echo "示例:"
-        echo "  ag \"解释 fish shell\""
-        echo "  ag -o fish_explained.md \"解释 fish shell (md)\""
-        echo "  ag -m \"解释 git rebase (md)\"           # 仅终端渲染"
+        echo "  ag \"你好\"                         # 即时对话"
+        echo "  ag -s projectA \"开始讨论项目A\"      # 使用或创建 projectA 上下文"
+        echo "  ag -s projectA \"继续讨论...\"       # 继续 projectA 对话"
+        echo "  ag -l                             # 查看有哪些上下文"
+        echo "  ag -d projectA                    # 删除 projectA 上下文"
+        echo "  ag -o out.md -s projB \"...\"     # 使用 projB 上下文, 保存响应并用 rich 打开"
         return 0
     end
 
-    # --- 确定最终输出文件路径 ---
+    if set -q _flag_list
+        echo "可用的上下文 (在 $CONTEXT_DIR):"
+        set context_files (find "$CONTEXT_DIR" -maxdepth 1 -name '*.json' -printf '%f\n' 2>/dev/null | string replace '.json' '')
+        if test (count $context_files) -gt 0; for file in $context_files; echo "- "$file; end; else; echo "(无)"; end
+        return 0
+    end
+
+    if set -q _flag_delete
+        set context_name_to_delete $_flag_delete
+        set context_file_to_delete "$CONTEXT_DIR/$context_name_to_delete.json"
+        if test -e "$context_file_to_delete"
+            rm "$context_file_to_delete"; if test $status -eq 0; echo "✅ 已删除上下文 '$context_name_to_delete' ($context_file_to_delete)" >&2; return 0; else; echo "错误: 无法删除上下文文件 '$context_file_to_delete'" >&2; return 1; end
+        else; echo "错误: 上下文 '$context_name_to_delete' 不存在 ($context_file_to_delete)" >&2; return 1; end
+    end
+
+    # --- 确定最终输出文件路径 (-o 选项) ---
     set -l output_file ""
     if set -q _flag_output
         set -l user_output_spec $_flag_output
@@ -227,87 +293,63 @@ function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/
         else if test "$user_output_spec" = "~"; set output_file $HOME
         else if string match -q '*/*' -- "$user_output_spec"; set output_file $user_output_spec
         else
-            if set -q AG_DEFAULT_OUTPUT_DIR; and test -n "$AG_DEFAULT_OUTPUT_DIR"; and test -d "$AG_DEFAULT_OUTPUT_DIR"
-                 set output_file "$AG_DEFAULT_OUTPUT_DIR/$user_output_spec"
-            else
-                 set output_file "$user_output_spec"
-            end
+            if set -q AG_DEFAULT_OUTPUT_DIR; and test -n "$AG_DEFAULT_OUTPUT_DIR"; and test -d "$AG_DEFAULT_OUTPUT_DIR"; set output_file "$AG_DEFAULT_OUTPUT_DIR/$user_output_spec"; else; set output_file "$user_output_spec"; end
         end
     end
 
     # --- 前置检查 ---
     if not set -q OPENROUTER_API_KEY; echo "错误：请设置 OPENROUTER_API_KEY 环境变量。" >&2; return 1; end
-    # jq should be installed by setup script
-    # rich should be installed by setup script if needed
+    if not command -q jq; echo "错误：需要 'jq'。" >&2; return 1; end
     if set -q _flag_output; or set -q _flag_markdown
         if not command -q rich
-            echo "错误：保存/渲染 Markdown 需要 'rich-cli'。请确认已安装。" >&2
-            echo "(推荐: pipx install rich-cli)" >&2
+            echo "错误：选项 -o 或 -m 需要 'rich-cli'。请确认已安装或重新运行安装脚本不带 --no-rich。" >&2
             return 1
         end
     end
-    # less check only needed for -m without -o
     if set -q _flag_markdown; and not set -q _flag_output
-        if not command -q less
-             echo "错误：终端 Markdown 分页显示需要 'less'。请确认已安装。" >&2
-             return 1
-        end
+        if not command -q less; echo "错误：选项 -m (无 -o) 需要 'less'。" >&2; return 1; end
     end
 
     # --- 参数和 Prompt 处理 ---
-    if test (count $argv) -eq 0; and not set -q _flag_reset
-        if not set -q _flag_reset
-            echo "用法: ag [-c] [-r] [-m] [-o <file>] [-h] \"<你的问题>\"" >&2
-            return 1
-        end
-    end
-    set -l user_prompt ""
-    if test (count $argv) -gt 0
-       set user_prompt (string join ' ' $argv)
+    if test (count $argv) -eq 0; echo "错误：缺少用户问题。" >&2; echo "用法: ag [选项] \"<你的问题>\"" >&2; return 1; end
+    set -l user_prompt (string join ' ' $argv)
+
+    # --- 上下文处理 (基于 -s <name>) ---
+    set -l messages_json_array '[]'
+    set -l selected_context_name ""
+    set -l context_file_to_use "" # 文件路径
+    if set -q _flag_select
+        set selected_context_name $_flag_select
+        set context_file_to_use "$CONTEXT_DIR/$selected_context_name.json"
+        echo "ℹ️ 使用上下文: '$selected_context_name'" >&2
+        if test -e "$context_file_to_use"
+            set messages_json_array (cat "$context_file_to_use" 2>/dev/null)
+            if test $status -ne 0; or test -z "$messages_json_array"; echo "警告: 无法读取或上下文文件为空 '$context_file_to_use'. 将创建新上下文。" >&2; set messages_json_array '[]';
+            else if not echo "$messages_json_array" | jq -e 'type == "array"' > /dev/null 2>&1; echo "警告: 上下文文件 '$context_file_to_use' 内容不是有效的 JSON 数组。将创建新上下文。" >&2; set messages_json_array '[]'; end; end
+        else; echo "✨ 上下文文件 '$context_file_to_use' 不存在，将创建新的对话。" >&2; end
     end
 
     # --- 配置 System Prompt ---
     set -l system_prompt_base "根据需要进行适当的换行和分段。回答尽量详细，将我当作小白来解释。"
     set -l system_prompt_format_instruction
-    if set -q _flag_output; or set -q _flag_markdown
+    if set -q _flag_output; or set -q _flag_markdown # 如果保存文件或请求 markdown 渲染
         set system_prompt_format_instruction "请使用 Markdown 格式进行回复（包括代码块、列表、加粗等）。"
     else
         set system_prompt_format_instruction "请始终使用纯文本格式进行回复,可以使用emoji,但也不宜太多。绝对不要使用任何Markdown标记（如\`*\`、\`#\`、\` \`\`\` \`、\\"-\\"等），因为输出环境是终端。"
     end
     set -l system_prompt "$system_prompt_format_instruction $system_prompt_base"
-    set -l model_name "deepseek/deepseek-chat-v3-0324:free" # Or your preferred model
+    set -l model_name "deepseek/deepseek-chat-v3-0324:free"
     set -l api_endpoint "https://openrouter.ai/api/v1/chat/completions"
-    set -l context_var_name "__ag_session_context"
-
-    # --- 上下文处理 ---
-    if set -q _flag_reset; echo "🔄 正在重置 ag 对话上下文。" >&2; set -e $context_var_name; end
-    set -l messages_json_array '[]'
-    if set -q _flag_context
-        if set -q $context_var_name
-            set messages_json_array $$context_var_name
-            if not string match -q -r '^\[.*\]$' -- "$messages_json_array"; echo "警告:ag 存储的上下文格式无效..." >&2; set messages_json_array '[]'; else; echo "🧠 使用现有 ag 会话上下文。" >&2; end
-        else; echo "✨ 开启新的 ag 对话上下文。" >&2; end
-    else
-        set messages_json_array '[]'
-    end
 
     # --- 请求准备 ---
-    set -l current_call_messages
-    set current_call_messages (jq -n --arg content "$system_prompt" '[{"role": "system", "content": $content}]')
+    set -l current_call_messages (jq -n --arg content "$system_prompt" '[{"role": "system", "content": $content}]')
     if test $status -ne 0; echo "错误: 构建系统消息失败。" >&2; return 1; end
-    if set -q _flag_context; and test -n "$messages_json_array"; and string match -q -r '^\[.*\]$' -- "$messages_json_array" # merge history start
+    if test -n "$messages_json_array"; and echo "$messages_json_array" | jq -e 'type == "array"' > /dev/null 2>&1 # 合并有效历史
         set current_call_messages (echo $current_call_messages $messages_json_array | jq -s '.[0] + .[1]')
         if test $status -ne 0; echo "错误: 合并历史消息失败。" >&2; return 1; end
-    end # merge history end
-    if test -n "$user_prompt" # add user msg start
-        set current_call_messages (echo $current_call_messages | jq --arg content "$user_prompt" '. + [{"role": "user", "content": $content}]')
-        if test $status -ne 0; echo "错误: 添加用户消息失败。" >&2; return 1; end
-    else if not set -q _flag_reset # add user msg else if
-         echo "错误：缺少用户问题。" >&2; return 1
-    end # add user msg end
-
-    # --- 如果只是重置操作 ---
-    if set -q _flag_reset; and test -z "$user_prompt"; echo "✅ 上下文已重置。" >&2; return 0; end
+    end
+    set current_call_messages (echo $current_call_messages | jq --arg content "$user_prompt" '. + [{"role": "user", "content": $content}]')
+    if test $status -ne 0; echo "错误: 添加用户消息失败。" >&2; return 1; end
 
     # --- 构建 API 请求体 ---
     set -l json_payload (jq -n --arg model "$model_name" --argjson messages "$current_call_messages" '{"model": $model, "messages": $messages, "stream": true}')
@@ -315,10 +357,8 @@ function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/
 
     # --- API 调用和流式处理 ---
     echo "🤔 正在向 cry 的赛博助手 $model_name 请求帮助😎..." >&2
-    if set -q _flag_context; echo "(使用上下文)" >&2; end
-    if not set -q _flag_output; and not set -q _flag_markdown
-        echo "🤖 :"
-    end
+    if test -n "$selected_context_name"; echo "(使用上下文: $selected_context_name)" >&2; end # Display context name if used
+    if not set -q _flag_output; and not set -q _flag_markdown; echo "🤖 :"; end
 
     set -l full_response ""
     set -l curl_exit_status -1
@@ -328,122 +368,66 @@ function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/
         curl --silent --no-buffer -X POST "$api_endpoint" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-            -d "$json_payload" | while read -l line # while start
-
-            if string match -q "data: *" -- "$line" # if data start
+            -d "$json_payload" | while read -l line
+            if string match -q "data: *" -- "$line"
                 set json_chunk (string sub -s 7 -- "$line")
-                if test "$json_chunk" = "[DONE]"; break; end # if done check
-
+                if test "$json_chunk" = "[DONE]"; break; end
                 set api_error (echo "$json_chunk" | jq -r '.error.message // ""')
-                if test -n "$api_error"; echo "API 错误: $api_error" >&2; continue; end # if api error check
-
+                if test -n "$api_error"; echo "API 错误: $api_error" >&2; continue; end
                 set text_chunk (echo "$json_chunk" | jq -r '.choices[0].delta.content // ""')
-                set jq_status $status
-
-                if test $jq_status -ne 0 # if jq parse chunk start
-                     echo "警告：解析 JSON 块失败: $json_chunk" >&2
-                else # if jq parse chunk else
-                    if not set -q _flag_output; and not set -q _flag_markdown
-                        printf '%s' "$text_chunk"
-                    end
+                if test $status -ne 0; echo "警告：解析 JSON 块失败: $json_chunk" >&2
+                else
+                    if not set -q _flag_output; and not set -q _flag_markdown; printf '%s' "$text_chunk"; end
                     set full_response "$full_response$text_chunk"
-                end # if jq parse chunk end
-            end # if data end
+                end
+            end
         end # while end
-        set process_exit_status $status
     end # pipeline end
     set curl_exit_status $pipestatus[1]
+    set process_exit_status $pipestatus[-1] # Get status of the last command in pipeline (while/read)
 
-    # --- 后处理、保存/打开文件、终端渲染或添加换行 ---
+    # --- 后处理、保存响应、终端渲染或添加换行 ---
     if test $curl_exit_status -ne 0; echo "错误:curl 命令失败 (状态码: $curl_exit_status)..." >&2; return 1; end
-    if test $process_exit_status -ne 0
-        echo "警告：While 循环处理过程异常结束 (状态码: $process_exit_status)。响应可能不完整。" >&2
-    end
+    if test $process_exit_status -ne 0; echo "警告：While 循环处理过程异常结束 (状态码: $process_exit_status)..." >&2; end
 
-    set -l save_status 0
-    set -l render_status 0
+    set -l save_status 0; set -l render_status 0
+    # 处理 -o (保存当前响应)
     if test -n "$output_file"; and test $curl_exit_status -eq 0; and test $process_exit_status -eq 0; and test -n "$full_response"
-        set output_dir (dirname "$output_file")
-        if not test -d "$output_dir"
-             mkdir -p "$output_dir"
-             if test $status -ne 0
-                  echo "错误：无法创建目录 '$output_dir'" >&2
-                  set save_status 1
-             end
-        end
-
+        set output_dir (dirname "$output_file"); if not test -d "$output_dir"; mkdir -p "$output_dir"; if test $status -ne 0; echo "错误：无法创建目录 '$output_dir'" >&2; set save_status 1; end; end
+        if test $save_status -eq 0; printf '%s' "$full_response" > "$output_file"; set save_status $status; end
         if test $save_status -eq 0
-             printf '%s' "$full_response" > "$output_file"
-             set save_status $status
-             if test $save_status -eq 0
-                  echo "✅ 响应已保存到: $output_file" >&2
-                  if test -e "$output_file"
-                      if command -q rich
-                           echo "ℹ️ 正在使用 rich --markdown 打开文件..." >&2
-                           rich --markdown "$output_file" # 强制 rich 将文件视为 Markdown
-                           set render_status $status
-                           if test $render_status -ne 0
-                               echo "警告: rich 命令未能成功显示文件 (状态码: $render_status)" >&2
-                           end
-                      else
-                           echo "警告: 未找到 rich 命令，无法自动打开文件。" >&2
-                      end
-                  else
-                       echo "错误：文件 '$output_file' 在保存后未能找到！无法打开。" >&2
-                       set save_status 1
-                  end
-             else
-                  echo "错误：无法将响应写入文件 '$output_file' (状态码: $save_status)" >&2
-             end
-        end
+            echo "✅ 本次响应已保存到: $output_file" >&2
+            if test -e "$output_file"; if command -q rich; echo "ℹ️ 正在使用 rich --markdown 打开文件..." >&2; rich --markdown "$output_file"; set render_status $status; if test $render_status -ne 0; echo "警告: rich 命令未能成功显示文件 (状态码: $render_status)" >&2; end; else; echo "警告: 未找到 rich 命令，无法自动打开文件。" >&2; end; else; echo "错误：文件 '$output_file' 在保存后未能找到！无法打开。" >&2; set save_status 1; end
+        else; echo "错误：无法将响应写入文件 '$output_file' (状态码: $save_status)" >&2; end
+    # 处理 -m 且无 -o (终端渲染)
     else if not set -q _flag_output; and set -q _flag_markdown; and test $curl_exit_status -eq 0; and test $process_exit_status -eq 0; and test -n "$full_response"
-        set -l tmp_file "/tmp/ag_render."(random)".md"
-        printf '%s' "$full_response" > "$tmp_file"
-        if test $status -eq 0
-             rich "$tmp_file" | less -R
-             set render_status $pipestatus[1] # rich status
-             if test $render_status -ne 0; echo "警告: rich 命令渲染可能出错 (状态码: $render_status)" >&2; end
-             rm "$tmp_file"
-        else
-             echo "错误: 无法创建临时文件进行渲染" >&2
-             echo "$full_response"
-             set render_status 1
-        end
-    else if not set -q _flag_output; and not set -q _flag_markdown; and test $curl_exit_status -eq 0; and test $process_exit_status -eq 0
-        echo
-    else if test $process_exit_status -ne 0
-        echo
-    end
+        set -l tmp_file "/tmp/ag_render."(random)".md"; printf '%s' "$full_response" > "$tmp_file"
+        if test $status -eq 0; rich "$tmp_file" | less -R; set render_status $pipestatus[1]; if test $render_status -ne 0; echo "警告: rich 命令渲染可能出错 (状态码: $render_status)" >&2; end; rm "$tmp_file"; else; echo "错误: 无法创建临时文件进行渲染" >&2; echo "$full_response"; set render_status 1; end
+    # 处理默认流式输出的换行
+    else if not set -q _flag_output; and not set -q _flag_markdown; and test $curl_exit_status -eq 0; and test $process_exit_status -eq 0; echo
+    # 处理错误时的换行
+    else if test $process_exit_status -ne 0; echo; end
 
-    # --- 上下文保存 ---
-    if set -q _flag_context; and test $curl_exit_status -eq 0; and test -n "$full_response"
-        if test $process_exit_status -eq 0
-            set -l updated_context_json
-            set -l jq_status -1
-            if test -n "$user_prompt"
-                set updated_context_json (echo $messages_json_array | jq --arg user_msg "$user_prompt" --arg assistant_msg "$full_response" '. + [{"role": "user", "content": $user_msg}, {"role": "assistant", "content": $assistant_msg}]')
-                set jq_status $status
-            else
-                set updated_context_json $messages_json_array
-                set jq_status 0
-            end
-            if test $jq_status -eq 0
-                if test "$updated_context_json" != "$messages_json_array"
-                    set -g $context_var_name "$updated_context_json"
-                end
-            else
-                echo "错误：使用 jq 更新 ag 上下文历史失败 (状态码: $jq_status)。" >&2
-            end
-        end
+    # --- 上下文保存 (基于 -s <name>) ---
+    if test -n "$selected_context_name"; and test $curl_exit_status -eq 0; and test $process_exit_status -eq 0; and test -n "$full_response"
+        set context_file_to_save "$CONTEXT_DIR/$selected_context_name.json"
+        set -l updated_context_json
+        set -l jq_status -1
+        set updated_context_json (echo $messages_json_array | jq --arg user_msg "$user_prompt" --arg assistant_msg "$full_response" '. + [{"role": "user", "content": $user_msg}, {"role": "assistant", "content": $assistant_msg}]')
+        set jq_status $status
+        if test $jq_status -eq 0
+            printf '%s\n' "$updated_context_json" > "$context_file_to_save"
+            if test $status -ne 0; echo "错误：无法将更新后的上下文写入文件 '$context_file_to_save'" >&2; end
+        else; echo "错误：使用 jq 更新内存中的上下文失败 (状态码: $jq_status)。上下文未保存到文件。" >&2; end
     end
 
     # --- 最终返回码 ---
     if test $curl_exit_status -ne 0; or test $process_exit_status -ne 0; or test $save_status -ne 0; or test $render_status -ne 0
         return 1
     end
-
     return 0
 end # <--- 函数定义的唯一结束 end
+
 EOF
 
 # Check if the file was created successfully
@@ -456,7 +440,7 @@ fi
 # --- Final Instructions ---
 echo ""
 print_info SETUP_COMPLETE
-print_info "--------------------------------------------------" # Separator in both languages
+print_info "--------------------------------------------------"
 echo ""
 print_info NEXT_STEPS
 echo ""
@@ -472,10 +456,14 @@ print_info FISH_CHSH
 echo ""
 print_info EXAMPLE_USAGE
 echo "   ag \"Explain the theory of relativity simply.\""
-echo "   ag -m \"Show me a Python example for reading a file using Markdown.\""
-echo "   ag -o relativity.md \"Explain the theory of relativity simply.\""
-echo "   ag -c \"What was the last thing I asked you?\""
+echo "   ag -s projectX \"Start a new chat for project X\""
+echo "   ag -l"
+echo "   ag -m -s projectX \"Continue project X discussion with Markdown\""
+echo "   ag -o response.md \"Save this response\""
 echo ""
+if [[ "$INSTALL_RICH" == false ]]; then
+    print_info INFO_RICH_DISABLED_NOTE
+fi
 print_info ENJOY
 
 exit 0
