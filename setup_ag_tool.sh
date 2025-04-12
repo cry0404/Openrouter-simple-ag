@@ -2,9 +2,7 @@
 
 # Exit immediately if a command exits with a non-zero status.
 set -e
-# Treat unset variables as an error when substituting.
-# set -u
-# Prevent errors in pipelines from being masked.
+# set -u # Uncomment for stricter variable checking
 set -o pipefail
 
 # --- Configuration ---
@@ -13,9 +11,7 @@ INSTALL_RICH=true # Default to installing rich-cli and less
 # --- Argument Parsing ---
 TEMP=$(getopt -o '' --long no-rich,help -n "$0" -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
-# Note the quotes around $TEMP: they are essential!
 eval set -- "$TEMP"
-# Clear $TEMP
 unset TEMP
 
 while true; do
@@ -31,15 +27,23 @@ while true; do
   esac
 done
 
-
-# --- Language Detection ---
-SCRIPT_LANG="en" # Default to English
-if [[ "${LANG}" == "zh"* ]]; then
-    SCRIPT_LANG="zh"
-fi
+# --- !!! Language Selection !!! ---
+SCRIPT_LANG=""
+while [[ "$SCRIPT_LANG" != "en" && "$SCRIPT_LANG" != "zh" ]]; do
+    # Prompt in both languages initially
+    read -p "Please choose language (请输入语言) [en/zh]: " SCRIPT_LANG
+    # Convert to lowercase
+    SCRIPT_LANG=$(echo "$SCRIPT_LANG" | tr '[:upper:]' '[:lower:]')
+    if [[ "$SCRIPT_LANG" != "en" && "$SCRIPT_LANG" != "zh" ]]; then
+        echo "Invalid input. Please enter 'en' or 'zh'."
+        echo "无效输入，请输入 'en' 或 'zh'。"
+    fi
+done
+echo "Language set to: $SCRIPT_LANG"
+echo "语言设置为: $SCRIPT_LANG"
+echo # Add a newline for spacing
 
 # --- Message Definitions (Same as previous version) ---
-
 # --- English Messages ---
 MSG_ERR_NOROOT_EN="This script should not be run as root. Please run as your regular user."
 MSG_ERR_NOAPT_EN="This script requires 'apt' package manager (Debian/Ubuntu based systems)."
@@ -61,12 +65,13 @@ MSG_WARN_RICH_NOT_FOUND_EN="Installed rich-cli via pipx, but 'rich' command not 
 MSG_ERR_RICH_INSTALL_FAILED_EN="Failed to install rich-cli using pipx."
 MSG_INFO_SKIPPING_RICH_EN="Skipping installation of rich-cli and less as requested."
 MSG_INFO_CREATE_FISH_DIRS_EN="Creating Fish configuration directories (if they don't exist)..."
-MSG_ERR_CREATE_FISH_DIRS_FAILED_EN="Failed to create Fish function directory:"
-MSG_INFO_FISH_DIR_ENSURED_EN="Directory ensured:"
+MSG_ERR_CREATE_FISH_DIRS_FAILED_EN="Failed to create Fish function directory: \$1"
+MSG_INFO_FISH_DIR_ENSURED_EN="Directory ensured: \$1"
 MSG_INFO_CREATE_AG_FILE_EN="Creating the 'ag.fish' function file..."
-MSG_INFO_AG_FILE_CREATED_EN="'ag.fish' function file created successfully at"
+MSG_INFO_AG_FILE_CREATED_EN="'ag.fish' function file created successfully at \$1"
 MSG_ERR_AG_FILE_FAILED_EN="Failed to create 'ag.fish' file!"
 MSG_INFO_SETUP_COMPLETE_EN="Setup complete!"
+MSG_INFO_SEPARATOR_EN="--------------------------------------------------"
 MSG_INFO_NEXT_STEPS_EN="IMPORTANT NEXT STEPS:"
 MSG_INFO_SET_API_KEY_EN="1. Set your OpenRouter API Key:"
 MSG_INFO_RUN_COMMAND_EN="   Run this command in your terminal (and ideally add it to your Fish config):"
@@ -100,12 +105,13 @@ MSG_WARN_RICH_NOT_FOUND_ZH="已通过 pipx 安装 rich-cli，但未能立即找�
 MSG_ERR_RICH_INSTALL_FAILED_ZH="使用 pipx 安装 rich-cli 失败。"
 MSG_INFO_SKIPPING_RICH_ZH="已根据请求跳过安装 rich-cli 和 less。"
 MSG_INFO_CREATE_FISH_DIRS_ZH="正在创建 Fish 配置目录 (如果不存在)..."
-MSG_ERR_CREATE_FISH_DIRS_FAILED_ZH="创建 Fish 函数目录失败:"
-MSG_INFO_FISH_DIR_ENSURED_ZH="目录已确保存在:"
+MSG_ERR_CREATE_FISH_DIRS_FAILED_ZH="创建 Fish 函数目录失败: \$1"
+MSG_INFO_FISH_DIR_ENSURED_ZH="目录已确保存在: \$1"
 MSG_INFO_CREATE_AG_FILE_ZH="正在创建 'ag.fish' 函数文件..."
-MSG_INFO_AG_FILE_CREATED_ZH="'ag.fish' 函数文件已成功创建于"
+MSG_INFO_AG_FILE_CREATED_ZH="'ag.fish' 函数文件已成功创建于 \$1"
 MSG_ERR_AG_FILE_FAILED_ZH="创建 'ag.fish' 文件失败！"
 MSG_INFO_SETUP_COMPLETE_ZH="设置完成！"
+MSG_INFO_SEPARATOR_ZH="--------------------------------------------------"
 MSG_INFO_NEXT_STEPS_ZH="重要后续步骤："
 MSG_INFO_SET_API_KEY_ZH="1. 设置您的 OpenRouter API 密钥："
 MSG_INFO_RUN_COMMAND_ZH="   在终端中运行此命令 (并建议将其添加到您的 Fish 配置中)："
@@ -119,26 +125,30 @@ MSG_INFO_ENJOY_ZH="祝您使用 AI 助手愉快！"
 MSG_INFO_RICH_DISABLED_NOTE_ZH="注意：Markdown 渲染 (-m, -o) 需要 rich-cli 和 less，这些已被跳过安装。"
 
 
-# --- Helper Function for Messages ---
+# --- Helper Function for Messages (Corrected version) ---
 print_message() {
     local key=$1
-    shift # Remove the key from arguments
+    shift # Remove the key, remaining args are for placeholders
     local msg_var_en="MSG_${key}_EN"
     local msg_var_zh="MSG_${key}_ZH"
     local chosen_msg=""
 
-    if [[ "$SCRIPT_LANG" == "zh" ]] && [[ -v "$msg_var_zh" ]]; then
+    # Select the message based on language
+    if [[ "$SCRIPT_LANG" == "zh" ]] && declare -p "$msg_var_zh" &>/dev/null; then
         chosen_msg="${!msg_var_zh}"
-    elif [[ -v "$msg_var_en" ]]; then
+    elif declare -p "$msg_var_en" &>/dev/null; then
          chosen_msg="${!msg_var_en}"
     else
          echo "WARN: Message key '$key' not found." >&2
-         return
+         return 1
     fi
-    # Replace placeholders like $1, $2 with actual arguments passed
+
+    # Replace placeholders $1, $2, etc. with actual arguments using sed
     local i=1
     for arg in "$@"; do
-        chosen_msg="${chosen_msg//\$$i/$arg}" # Simple placeholder replacement
+        # Use sed for safer replacement, escape backslashes and delimiter
+        escaped_arg=$(echo "$arg" | sed -e 's/[\/&]/\\&/g')
+        chosen_msg=$(echo "$chosen_msg" | sed "s|\\\$$i|$escaped_arg|g")
         i=$((i + 1))
     done
     echo "$chosen_msg"
@@ -154,7 +164,7 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# --- Configuration Variables (User home dependent) ---
+# --- Configuration Variables ---
 FISH_CONFIG_DIR="$HOME/.config/fish"
 FISH_FUNC_DIR="$FISH_CONFIG_DIR/functions"
 AG_SCRIPT_PATH="$FISH_FUNC_DIR/ag.fish"
@@ -211,6 +221,7 @@ print_info INFO_FISH_DIR_ENSURED "$FISH_FUNC_DIR"
 # 4. Create the ag.fish function file (Embedded content remains the same)
 print_info INFO_CREATE_AG_FILE
 
+# --- !!! Embedded ag.fish script (No changes needed inside) !!! ---
 cat << 'EOF' > "$AG_SCRIPT_PATH"
 # 函数：ag - 向 OpenRouter API 提问，支持流式、多文件上下文、保存响应、Markdown 渲染
 # 用法: ag [-s <ctx>] [-l] [-d <ctx>] [-m] [-o <file>] [-h] "你的问题是什么？"
@@ -249,7 +260,7 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
         printf "  %-25s %s\n" "-d <名称>, --delete <名称>" "删除指定名称的上下文文件"
         printf "  %-25s %s\n" "-m, --markdown" "请求 Markdown 格式并在终端渲染 (需 rich/less)"
         printf "  %-25s %s\n" "-o <路径>, --output <路径>" "将本次 AI 响应保存到指定文件"
-        printf "  %-25s %s\n" " " "  (若同时用 -m 或默认, 请求 Markdown; 否则纯文本)" # Simplified logic
+        printf "  %-25s %s\n" " " "  (若同时用 -m 或默认, 请求 Markdown; 否则纯文本)"
         printf "  %-25s %s\n" " " "  (保存前会尝试创建目录 (mkdir -p))"
         printf "  %-25s %s\n" " " "  (保存后会尝试用 'rich' 打开文件)"
         printf "  %-25s %s\n" "-h, --help" "显示此帮助信息并退出"
@@ -384,7 +395,7 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
         end # while end
     end # pipeline end
     set curl_exit_status $pipestatus[1]
-    set process_exit_status $pipestatus[-1] # Get status of the last command in pipeline (while/read)
+    set process_exit_status $pipestatus[-1]
 
     # --- 后处理、保存响应、终端渲染或添加换行 ---
     if test $curl_exit_status -ne 0; echo "错误:curl 命令失败 (状态码: $curl_exit_status)..." >&2; return 1; end
@@ -416,8 +427,10 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
         set updated_context_json (echo $messages_json_array | jq --arg user_msg "$user_prompt" --arg assistant_msg "$full_response" '. + [{"role": "user", "content": $user_msg}, {"role": "assistant", "content": $assistant_msg}]')
         set jq_status $status
         if test $jq_status -eq 0
-            printf '%s\n' "$updated_context_json" > "$context_file_to_save"
-            if test $status -ne 0; echo "错误：无法将更新后的上下文写入文件 '$context_file_to_save'" >&2; end
+            if test "$updated_context_json" != "$messages_json_array" # 仅当内容变化时写入
+                 printf '%s\n' "$updated_context_json" > "$context_file_to_save"
+                 if test $status -ne 0; echo "错误：无法将更新后的上下文写入文件 '$context_file_to_save'" >&2; end
+            fi
         else; echo "错误：使用 jq 更新内存中的上下文失败 (状态码: $jq_status)。上下文未保存到文件。" >&2; end
     end
 
@@ -439,22 +452,22 @@ fi
 
 # --- Final Instructions ---
 echo ""
-print_info SETUP_COMPLETE
-print_info "--------------------------------------------------"
+print_info INFO_SETUP_COMPLETE
+print_info INFO_SEPARATOR
 echo ""
-print_info NEXT_STEPS
+print_info INFO_NEXT_STEPS
 echo ""
-print_info SET_API_KEY
-print_info RUN_COMMAND
+print_info INFO_SET_API_KEY
+print_info INFO_RUN_COMMAND
 echo "   set -gx OPENROUTER_API_KEY 'sk-or-v1-YOUR-API-KEY-HERE'"
-print_info API_KEY_EXAMPLE
+print_info INFO_API_KEY_EXAMPLE
 echo ""
-print_info START_FISH
-print_info FISH_HOWTO
-print_info FISH_DEFAULT
-print_info FISH_CHSH
+print_info INFO_START_FISH
+print_info INFO_FISH_HOWTO
+print_info INFO_FISH_DEFAULT
+print_info INFO_FISH_CHSH
 echo ""
-print_info EXAMPLE_USAGE
+print_info INFO_EXAMPLE_USAGE
 echo "   ag \"Explain the theory of relativity simply.\""
 echo "   ag -s projectX \"Start a new chat for project X\""
 echo "   ag -l"
@@ -464,6 +477,6 @@ echo ""
 if [[ "$INSTALL_RICH" == false ]]; then
     print_info INFO_RICH_DISABLED_NOTE
 fi
-print_info ENJOY
+print_info INFO_ENJOY
 
 exit 0
