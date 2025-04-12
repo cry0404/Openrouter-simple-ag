@@ -8,7 +8,7 @@ Inspired by the need for a straightforward, terminal-based AI interaction tool w
 
 ---
 
-**中文说明 (Chinese Description Below)**
+**[中文说明 (Chinese Description Below)](https://github.com/cry0404/Openrouter-simple-ag/blob/main/README.md#%E4%B8%AD%E6%96%87%E8%AF%B4%E6%98%8E)**
 
 ---
 
