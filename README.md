@@ -1,6 +1,7 @@
 # OpenRouter Simple AG - Your Command-Line AI Assistant
 
-##这只是一份由 ai 写出来的玩具，难免有所疏漏，主要是供我每次配环境使用😂
+## 这只是一份由 ai 写出来的玩具，难免有所疏漏，主要是供我每次配环境使用😂
+
 `ag` (AI Generalist) is a simple yet powerful command-line tool written in Fish shell script that allows you to interact with AI models via the OpenRouter API directly from your terminal. It supports streaming responses, managing multiple conversation contexts, rendering Markdown output, and saving conversations.
 
 Inspired by the need for a straightforward, terminal-based AI interaction tool without heavy dependencies.
