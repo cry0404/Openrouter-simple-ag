@@ -27,12 +27,10 @@ while true; do
   esac
 done
 
-# --- !!! Language Selection !!! ---
+# --- Language Selection ---
 SCRIPT_LANG=""
 while [[ "$SCRIPT_LANG" != "en" && "$SCRIPT_LANG" != "zh" ]]; do
-    # Prompt in both languages initially
     read -p "Please choose language (请输入语言) [en/zh]: " SCRIPT_LANG
-    # Convert to lowercase
     SCRIPT_LANG=$(echo "$SCRIPT_LANG" | tr '[:upper:]' '[:lower:]')
     if [[ "$SCRIPT_LANG" != "en" && "$SCRIPT_LANG" != "zh" ]]; then
         echo "Invalid input. Please enter 'en' or 'zh'."
@@ -41,9 +39,10 @@ while [[ "$SCRIPT_LANG" != "en" && "$SCRIPT_LANG" != "zh" ]]; do
 done
 echo "Language set to: $SCRIPT_LANG"
 echo "语言设置为: $SCRIPT_LANG"
-echo # Add a newline for spacing
+echo
 
 # --- Message Definitions (Same as previous version) ---
+# ... (Message definitions remain the same) ...
 # --- English Messages ---
 MSG_ERR_NOROOT_EN="This script should not be run as root. Please run as your regular user."
 MSG_ERR_NOAPT_EN="This script requires 'apt' package manager (Debian/Ubuntu based systems)."
@@ -128,30 +127,12 @@ MSG_INFO_RICH_DISABLED_NOTE_ZH="注意：Markdown 渲染 (-m, -o) 需要 rich-cl
 # --- Helper Function for Messages (Corrected version) ---
 print_message() {
     local key=$1
-    shift # Remove the key, remaining args are for placeholders
+    shift
     local msg_var_en="MSG_${key}_EN"
     local msg_var_zh="MSG_${key}_ZH"
     local chosen_msg=""
-
-    # Select the message based on language
-    if [[ "$SCRIPT_LANG" == "zh" ]] && declare -p "$msg_var_zh" &>/dev/null; then
-        chosen_msg="${!msg_var_zh}"
-    elif declare -p "$msg_var_en" &>/dev/null; then
-         chosen_msg="${!msg_var_en}"
-    else
-         echo "WARN: Message key '$key' not found." >&2
-         return 1
-    fi
-
-    # Replace placeholders $1, $2, etc. with actual arguments using sed
-    local i=1
-    for arg in "$@"; do
-        # Use sed for safer replacement, escape backslashes and delimiter
-        escaped_arg=$(echo "$arg" | sed -e 's/[\/&]/\\&/g')
-        chosen_msg=$(echo "$chosen_msg" | sed "s|\\\$$i|$escaped_arg|g")
-        i=$((i + 1))
-    done
-    echo "$chosen_msg"
+    if [[ "$SCRIPT_LANG" == "zh" ]] && declare -p "$msg_var_zh" &>/dev/null; then chosen_msg="${!msg_var_zh}"; elif declare -p "$msg_var_en" &>/dev/null; then chosen_msg="${!msg_var_en}"; else echo "WARN: Message key '$key' not found." >&2; return 1; fi;
+    local i=1; for arg in "$@"; do escaped_arg=$(echo "$arg" | sed -e 's/[\/&]/\\&/g'); chosen_msg=$(echo "$chosen_msg" | sed "s|\\\$$i|$escaped_arg|g"); i=$((i + 1)); done; echo "$chosen_msg"
 }
 
 # --- Wrapper Functions ---
@@ -160,9 +141,7 @@ print_warning() { print_message "$@" >&2; }
 print_error() { print_message "$@" >&2; exit 1; }
 
 # Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # --- Configuration Variables ---
 FISH_CONFIG_DIR="$HOME/.config/fish"
@@ -188,27 +167,11 @@ print_info INFO_PKGS_INSTALLED
 if [[ "$INSTALL_RICH" == true ]]; then
     print_info INFO_INSTALL_PKGS_RICH
     sudo apt install -y pipx less || print_error ERR_INSTALL_PKGS_FAILED
-
     print_info INFO_SETUP_PIPX
-    if ! pipx ensurepath; then
-        print_warning WARN_PIPX_PATH_FAILED
-        print_warning WARN_PIPX_PATH_RESTART
-    fi
+    if ! pipx ensurepath; then print_warning WARN_PIPX_PATH_FAILED; print_warning WARN_PIPX_PATH_RESTART; fi
     print_info INFO_PIPX_RESTART_NOTE
-
     print_info INFO_INSTALL_RICH
-    if command_exists rich; then
-        print_info INFO_RICH_FOUND
-    else
-        if pipx install rich-cli; then
-            print_info INFO_RICH_INSTALLED
-            if ! command_exists rich; then
-                 print_warning WARN_RICH_NOT_FOUND
-            fi
-        else
-            print_error ERR_RICH_INSTALL_FAILED
-        fi
-    fi
+    if command_exists rich; then print_info INFO_RICH_FOUND; else if pipx install rich-cli; then print_info INFO_RICH_INSTALLED; if ! command_exists rich; then print_warning WARN_RICH_NOT_FOUND; fi; else print_error ERR_RICH_INSTALL_FAILED; fi; fi
 else
     print_info INFO_SKIPPING_RICH
 fi
@@ -218,10 +181,10 @@ print_info INFO_CREATE_FISH_DIRS
 mkdir -p "$FISH_FUNC_DIR" || print_error ERR_CREATE_FISH_DIRS_FAILED "$FISH_FUNC_DIR"
 print_info INFO_FISH_DIR_ENSURED "$FISH_FUNC_DIR"
 
-# 4. Create the ag.fish function file (Embedded content remains the same)
+# 4. Create the ag.fish function file
 print_info INFO_CREATE_AG_FILE
 
-# --- !!! Embedded ag.fish script (No changes needed inside) !!! ---
+# --- !!! CORRECTED ag.fish content embedded below !!! ---
 cat << 'EOF' > "$AG_SCRIPT_PATH"
 # 函数：ag - 向 OpenRouter API 提问，支持流式、多文件上下文、保存响应、Markdown 渲染
 # 用法: ag [-s <ctx>] [-l] [-d <ctx>] [-m] [-o <file>] [-h] "你的问题是什么？"
@@ -266,7 +229,15 @@ function ag --description "ag: 向 OpenRouter 提问，可选多文件上下文�
         printf "  %-25s %s\n" "-h, --help" "显示此帮助信息并退出"
         echo ""
         echo "上下文存储目录: $CONTEXT_DIR"
-        echo "默认输出目录 (\$AG_DEFAULT_OUTPUT_DIR): "(set -q AG_DEFAULT_OUTPUT_DIR && echo $AG_DEFAULT_OUTPUT_DIR || echo 未设置)
+        # --- CORRECTED: Use Fish syntax for checking/printing env var ---
+        set -l default_dir_status
+        if set -q AG_DEFAULT_OUTPUT_DIR; and test -n "$AG_DEFAULT_OUTPUT_DIR"
+            set default_dir_status "$AG_DEFAULT_OUTPUT_DIR"
+        else
+            set default_dir_status "未设置"
+        end
+        echo "默认输出目录 (\$AG_DEFAULT_OUTPUT_DIR): $default_dir_status"
+        # --- End Correction ---
         echo ""
         echo "依赖: jq. 可选: rich-cli, less (用于 -m 无 -o)"
         echo ""
@@ -453,7 +424,7 @@ fi
 # --- Final Instructions ---
 echo ""
 print_info INFO_SETUP_COMPLETE
-print_info INFO_SEPARATOR
+print_info INFO_SEPARATOR # Use a key for the separator
 echo ""
 print_info INFO_NEXT_STEPS
 echo ""
@@ -477,6 +448,6 @@ echo ""
 if [[ "$INSTALL_RICH" == false ]]; then
     print_info INFO_RICH_DISABLED_NOTE
 fi
-print_info INFO_ENJOY
+print_info ENJOY
 
 exit 0
