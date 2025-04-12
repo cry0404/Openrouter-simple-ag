@@ -3,92 +3,176 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 # Treat unset variables as an error when substituting.
-# set -u # Uncomment if you prefer stricter variable checking
+# set -u
 # Prevent errors in pipelines from being masked.
 set -o pipefail
 
-# --- Configuration ---
-# Default directory for saving responses (can be overridden by user in config.fish)
-# Ensure this path uses $HOME explicitly if needed, as ~ might not expand correctly here.
-DEFAULT_AI_RESPONSE_DIR="$HOME/AI_Responses"
-FISH_CONFIG_DIR="$HOME/.config/fish"
-FISH_FUNC_DIR="$FISH_CONFIG_DIR/functions"
-AG_SCRIPT_PATH="$FISH_FUNC_DIR/ag.fish"
-FISH_CONFIG_PATH="$FISH_CONFIG_DIR/config.fish"
+# --- Language Detection ---
+SCRIPT_LANG="en" # Default to English
+if [[ "${LANG}" == "zh"* ]]; then
+    SCRIPT_LANG="zh"
+fi
 
-# --- Helper Functions ---
-print_info() {
-    echo "INFO: $1"
+# --- Message Definitions ---
+
+# --- English Messages ---
+MSG_ERR_NOROOT_EN="This script should not be run as root. Please run as your regular user."
+MSG_ERR_NOAPT_EN="This script requires 'apt' package manager (Debian/Ubuntu based systems)."
+MSG_INFO_START_EN="Starting setup for the 'ag' AI assistant tool..."
+MSG_INFO_UPDATE_APT_EN="Updating package lists (requires sudo)..."
+MSG_ERR_UPDATE_APT_FAILED_EN="Failed to update package lists."
+MSG_INFO_INSTALL_PKGS_EN="Installing required packages: fish, jq, curl, pipx (requires sudo)..."
+MSG_ERR_INSTALL_PKGS_FAILED_EN="Failed to install required packages."
+MSG_INFO_PKGS_INSTALLED_EN="System packages installed successfully."
+MSG_INFO_SETUP_PIPX_EN="Setting up pipx..."
+MSG_WARN_PIPX_PATH_FAILED_EN="pipx ensurepath command failed. You might need to manually add pipx binary path to your PATH."
+MSG_WARN_PIPX_PATH_RESTART_EN="Check pipx documentation or run 'pipx ensurepath' again after restarting your shell."
+MSG_INFO_PIPX_RESTART_NOTE_EN="pipx setup command executed. You might need to restart your shell or source ~/.profile for PATH changes to take effect."
+MSG_INFO_INSTALL_RICH_EN="Installing rich-cli using pipx..."
+MSG_INFO_RICH_FOUND_EN="'rich' command already found. Skipping installation."
+MSG_INFO_RICH_INSTALLED_EN="rich-cli installed successfully via pipx."
+MSG_WARN_RICH_NOT_FOUND_EN="Installed rich-cli via pipx, but 'rich' command not found immediately. Restart your shell or check PATH."
+MSG_ERR_RICH_INSTALL_FAILED_EN="Failed to install rich-cli using pipx."
+MSG_INFO_CREATE_FISH_DIRS_EN="Creating Fish configuration directories (if they don't exist)..."
+MSG_ERR_CREATE_FISH_DIRS_FAILED_EN="Failed to create Fish function directory:"
+MSG_INFO_FISH_DIR_ENSURED_EN="Directory ensured:"
+MSG_INFO_CREATE_AG_FILE_EN="Creating the 'ag.fish' function file..."
+MSG_INFO_AG_FILE_CREATED_EN="'ag.fish' function file created successfully at"
+MSG_ERR_AG_FILE_FAILED_EN="Failed to create 'ag.fish' file!"
+MSG_INFO_SETUP_COMPLETE_EN="Setup complete!"
+MSG_INFO_NEXT_STEPS_EN="IMPORTANT NEXT STEPS:"
+MSG_INFO_SET_API_KEY_EN="1. Set your OpenRouter API Key:"
+MSG_INFO_RUN_COMMAND_EN="   Run this command in your terminal (and ideally add it to your Fish config):"
+MSG_INFO_API_KEY_EXAMPLE_EN="(Replace 'sk-or-v1-YOUR-API-KEY-HERE' with your actual key)"
+MSG_INFO_START_FISH_EN="2. Start using the 'ag' command in a NEW Fish shell:"
+MSG_INFO_FISH_HOWTO_EN="   - If Fish is not your default shell, type: fish"
+MSG_INFO_FISH_DEFAULT_EN="   - If Fish IS your default shell, simply open a new terminal window."
+MSG_INFO_FISH_CHSH_EN="   - (Optional) To make Fish your default shell permanently, run: chsh -s \"\$(command -v fish)\""
+MSG_INFO_EXAMPLE_USAGE_EN="3. Example Usage:"
+MSG_INFO_ENJOY_EN="Enjoy your AI assistant!"
+
+# --- Chinese Messages (中文消息) ---
+MSG_ERR_NOROOT_ZH="请不要以 root 用户身份运行此脚本。请使用您的普通用户运行。"
+MSG_ERR_NOAPT_ZH="此脚本需要 'apt' 包管理器 (适用于 Debian/Ubuntu 系统)。"
+MSG_INFO_START_ZH="开始设置 'ag' AI 助手工具..."
+MSG_INFO_UPDATE_APT_ZH="正在更新软件包列表 (需要 sudo 权限)..."
+MSG_ERR_UPDATE_APT_FAILED_ZH="更新软件包列表失败。"
+MSG_INFO_INSTALL_PKGS_ZH="正在安装所需软件包: fish, jq, curl, pipx (需要 sudo 权限)..."
+MSG_ERR_INSTALL_PKGS_FAILED_ZH="安装所需软件包失败。"
+MSG_INFO_PKGS_INSTALLED_ZH="系统软件包安装成功。"
+MSG_INFO_SETUP_PIPX_ZH="正在设置 pipx..."
+MSG_WARN_PIPX_PATH_FAILED_ZH="pipx ensurepath 命令失败。您可能需要手动将 pipx 二进制文件路径添加到 PATH。"
+MSG_WARN_PIPX_PATH_RESTART_ZH="请查阅 pipx 文档或在重启 shell 后再次运行 'pipx ensurepath'。"
+MSG_INFO_PIPX_RESTART_NOTE_ZH="pipx 设置命令已执行。您可能需要重启 shell 或 source ~/.profile 以使 PATH 更改生效。"
+MSG_INFO_INSTALL_RICH_ZH="正在使用 pipx 安装 rich-cli..."
+MSG_INFO_RICH_FOUND_ZH="已找到 'rich' 命令。跳过安装。"
+MSG_INFO_RICH_INSTALLED_ZH="已通过 pipx 成功安装 rich-cli。"
+MSG_WARN_RICH_NOT_FOUND_ZH="已通过 pipx 安装 rich-cli，但未能立即找到 'rich' 命令。请重启 shell 或检查 PATH。"
+MSG_ERR_RICH_INSTALL_FAILED_ZH="使用 pipx 安装 rich-cli 失败。"
+MSG_INFO_CREATE_FISH_DIRS_ZH="正在创建 Fish 配置目录 (如果不存在)..."
+MSG_ERR_CREATE_FISH_DIRS_FAILED_ZH="创建 Fish 函数目录失败:"
+MSG_INFO_FISH_DIR_ENSURED_ZH="目录已确保存在:"
+MSG_INFO_CREATE_AG_FILE_ZH="正在创建 'ag.fish' 函数文件..."
+MSG_INFO_AG_FILE_CREATED_ZH="'ag.fish' 函数文件已成功创建于"
+MSG_ERR_AG_FILE_FAILED_ZH="创建 'ag.fish' 文件失败！"
+MSG_INFO_SETUP_COMPLETE_ZH="设置完成！"
+MSG_INFO_NEXT_STEPS_ZH="重要后续步骤："
+MSG_INFO_SET_API_KEY_ZH="1. 设置您的 OpenRouter API 密钥："
+MSG_INFO_RUN_COMMAND_ZH="   在终端中运行此命令 (并建议将其添加到您的 Fish 配置中)："
+MSG_INFO_API_KEY_EXAMPLE_ZH="(将 'sk-or-v1-YOUR-API-KEY-HERE' 替换为您的真实密钥)"
+MSG_INFO_START_FISH_ZH="2. 在一个新的 Fish shell 中开始使用 'ag' 命令："
+MSG_INFO_FISH_HOWTO_ZH="   - 如果 Fish 不是您的默认 shell，请输入: fish"
+MSG_INFO_FISH_DEFAULT_ZH="   - 如果 Fish 是您的默认 shell，只需打开一个新的终端窗口。"
+MSG_INFO_FISH_CHSH_ZH="   - (可选) 要将 Fish 永久设置为默认 shell，请运行: chsh -s \"\$(command -v fish)\""
+MSG_INFO_EXAMPLE_USAGE_ZH="3. 使用示例："
+MSG_INFO_ENJOY_ZH="祝您使用 AI 助手愉快！"
+
+
+# --- Helper Function for Messages ---
+print_message() {
+    local key=$1
+    local msg_var_en="MSG_${key}_EN"
+    local msg_var_zh="MSG_${key}_ZH"
+    if [[ "$SCRIPT_LANG" == "zh" ]] && [[ -v "$msg_var_zh" ]]; then
+        echo "${!msg_var_zh}" # Use indirect expansion
+    elif [[ -v "$msg_var_en" ]]; then
+         echo "${!msg_var_en}"
+    else
+         echo "WARN: Message key '$key' not found." >&2 # Fallback warning
+    fi
 }
 
-print_warning() {
-    echo "WARN: $1" >&2
-}
-
-print_error() {
-    echo "ERROR: $1" >&2
-    exit 1
-}
+# --- Wrapper Functions ---
+print_info() { print_message "$1"; }
+print_warning() { print_message "$1" >&2; }
+print_error() { print_message "$1" >&2; exit 1; }
 
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# --- Configuration Variables (User home dependent) ---
+FISH_CONFIG_DIR="$HOME/.config/fish"
+FISH_FUNC_DIR="$FISH_CONFIG_DIR/functions"
+AG_SCRIPT_PATH="$FISH_FUNC_DIR/ag.fish"
+FISH_CONFIG_PATH="$FISH_CONFIG_DIR/config.fish"
+# DEFAULT_AI_RESPONSE_DIR="$HOME/AI_Responses" # Used only in optional config.fish creation
+
+
 # --- Pre-checks ---
 if [[ $EUID -eq 0 ]]; then
-   print_error "This script should not be run as root. Please run as your regular user."
+   print_error ERR_NOROOT
 fi
 
 if ! command_exists apt; then
-    print_error "This script requires 'apt' package manager (Debian/Ubuntu based systems)."
+    print_error ERR_NOAPT
 fi
 
 # --- Main Setup Logic ---
-print_info "Starting setup for the 'ag' AI assistant tool..."
+print_info INFO_START
 
 # 1. Update package lists and install required packages
-print_info "Updating package lists (requires sudo)..."
-sudo apt update || print_error "Failed to update package lists."
+print_info INFO_UPDATE_APT
+sudo apt update || print_error ERR_UPDATE_APT_FAILED
 
-print_info "Installing required packages: fish, jq, curl, pipx (requires sudo)..."
-sudo apt install -y fish jq curl pipx || print_error "Failed to install required packages."
-print_info "System packages installed successfully."
+print_info INFO_INSTALL_PKGS
+sudo apt install -y fish jq curl pipx || print_error ERR_INSTALL_PKGS_FAILED
+print_info INFO_PKGS_INSTALLED
 
 # 2. Setup pipx
-print_info "Setting up pipx..."
+print_info INFO_SETUP_PIPX
 if ! pipx ensurepath; then
-    print_warning "pipx ensurepath command failed. You might need to manually add pipx binary path to your PATH."
-    print_warning "Check pipx documentation or run 'pipx ensurepath' again after restarting your shell."
+    print_warning WARN_PIPX_PATH_FAILED
+    print_warning WARN_PIPX_PATH_RESTART
 fi
-# Note: Path changes might require shell restart or sourcing profile
-print_info "pipx setup command executed. You might need to restart your shell or source ~/.profile for PATH changes to take effect."
+print_info INFO_PIPX_RESTART_NOTE
 
 # 3. Install rich-cli using pipx
-print_info "Installing rich-cli using pipx..."
+print_info INFO_INSTALL_RICH
 if command_exists rich; then
-    print_info "'rich' command already found. Skipping installation."
+    print_info INFO_RICH_FOUND
 else
     if pipx install rich-cli; then
-        print_info "rich-cli installed successfully via pipx."
-        # Verify installation
+        print_info INFO_RICH_INSTALLED
         if ! command_exists rich; then
-             print_warning "Installed rich-cli via pipx, but 'rich' command not found immediately. Restart your shell or check PATH."
+             print_warning WARN_RICH_NOT_FOUND
         fi
     else
-        print_error "Failed to install rich-cli using pipx."
+        print_error ERR_RICH_INSTALL_FAILED
     fi
 fi
 
 # 4. Create Fish configuration directories
-print_info "Creating Fish configuration directories (if they don't exist)..."
-mkdir -p "$FISH_FUNC_DIR" || print_error "Failed to create Fish function directory: $FISH_FUNC_DIR"
-print_info "Directory $FISH_FUNC_DIR ensured."
+print_info INFO_CREATE_FISH_DIRS
+mkdir -p "$FISH_FUNC_DIR" || print_error ERR_CREATE_FISH_DIRS_FAILED "$FISH_FUNC_DIR"
+print_info INFO_FISH_DIR_ENSURED "$FISH_FUNC_DIR"
 
 # 5. Create the ag.fish function file with embedded content
-print_info "Creating the 'ag.fish' function file..."
+print_info INFO_CREATE_AG_FILE
 
 # Use cat with HEREDOC 'EOF' to prevent variable expansion inside the script content
+# Note: The ag.fish content itself remains in English for simplicity
 cat << 'EOF' > "$AG_SCRIPT_PATH"
 # 函数：ag - 向 OpenRouter API 提问，支持流式、保存并用 rich 打开文件、或仅终端渲染
 # 用法: ag [-c|--context] [-r|--reset] [-m] [-o <file>] [-h] "你的问题是什么？"
@@ -153,9 +237,8 @@ function ag --description "ag: 向 OpenRouter 提问，可选上下文、保存/
 
     # --- 前置检查 ---
     if not set -q OPENROUTER_API_KEY; echo "错误：请设置 OPENROUTER_API_KEY 环境变量。" >&2; return 1; end
-    # jq check already done by setup script
-    # if not command -q jq; echo "错误：需要 'jq'。" >&2; return 1; end
-    # rich check already done by setup script (conditionally)
+    # jq should be installed by setup script
+    # rich should be installed by setup script if needed
     if set -q _flag_output; or set -q _flag_markdown
         if not command -q rich
             echo "错误：保存/渲染 Markdown 需要 'rich-cli'。请确认已安装。" >&2
@@ -365,68 +448,34 @@ EOF
 
 # Check if the file was created successfully
 if [[ -f "$AG_SCRIPT_PATH" ]]; then
-    print_info "'ag.fish' function file created successfully at $AG_SCRIPT_PATH"
+    print_info INFO_AG_FILE_CREATED "$AG_SCRIPT_PATH"
 else
-    print_error "Failed to create 'ag.fish' file!"
+    print_error ERR_AG_FILE_FAILED
 fi
-
-# 6. Optional: Setup basic config.fish (uncomment to enable)
-# print_info "Checking for Fish config file..."
-# if [[ ! -f "$FISH_CONFIG_PATH" ]]; then
-#     print_info "No config.fish found. Creating a basic one..."
-#     mkdir -p "$FISH_CONFIG_DIR" # Ensure directory exists
-#     cat << EOF > "$FISH_CONFIG_PATH"
-# # Fish configuration
-#
-# # Set default output directory for 'ag' tool (optional)
-# # Ensure the directory exists or the script will try to create it
-# # set -gx AG_DEFAULT_OUTPUT_DIR "$DEFAULT_AI_RESPONSE_DIR"
-#
-# # Initialize Starship prompt (if installed)
-# # if command -v starship > /dev/null
-# #    starship init fish | source
-# # end
-#
-# EOF
-#     print_info "Basic config.fish created at $FISH_CONFIG_PATH"
-# else
-#     print_info "Existing config.fish found at $FISH_CONFIG_PATH. No changes made."
-#     # Optionally, add code here to append settings if config.fish exists,
-#     # checking first if the settings are already present.
-#     # Example: Check and add AG_DEFAULT_OUTPUT_DIR if not set
-#     # if ! grep -q "set -gx AG_DEFAULT_OUTPUT_DIR" "$FISH_CONFIG_PATH"; then
-#     #    print_info "Adding AG_DEFAULT_OUTPUT_DIR setting to config.fish..."
-#     #    echo "" >> "$FISH_CONFIG_PATH"
-#     #    echo "# Set default output directory for 'ag' tool (added by setup script)" >> "$FISH_CONFIG_PATH"
-#     #    echo "set -gx AG_DEFAULT_OUTPUT_DIR \"$DEFAULT_AI_RESPONSE_DIR\"" >> "$FISH_CONFIG_PATH"
-#     # fi
-# fi
-
 
 # --- Final Instructions ---
 echo ""
-print_info "--------------------------------------------------"
-print_info "Setup complete!"
-print_info "--------------------------------------------------"
+print_info SETUP_COMPLETE
+print_info "--------------------------------------------------" # Separator in both languages
 echo ""
-echo "IMPORTANT NEXT STEPS:"
+print_info NEXT_STEPS
 echo ""
-echo "1. Set your OpenRouter API Key:"
-echo "   Run this command in your terminal (and ideally add it to your Fish config):"
+print_info SET_API_KEY
+print_info RUN_COMMAND
 echo "   set -gx OPENROUTER_API_KEY 'sk-or-v1-YOUR-API-KEY-HERE'"
-echo "   (Replace 'sk-or-v1-YOUR-API-KEY-HERE' with your actual key)"
+print_info API_KEY_EXAMPLE
 echo ""
-echo "2. Start using the 'ag' command in a NEW Fish shell:"
-echo "   - If Fish is not your default shell, type: fish"
-echo "   - If Fish IS your default shell, simply open a new terminal window."
-echo "   - (Optional) To make Fish your default shell permanently, run: chsh -s \"\$(command -v fish)\""
+print_info START_FISH
+print_info FISH_HOWTO
+print_info FISH_DEFAULT
+print_info FISH_CHSH
 echo ""
-echo "3. Example Usage:"
+print_info EXAMPLE_USAGE
 echo "   ag \"Explain the theory of relativity simply.\""
 echo "   ag -m \"Show me a Python example for reading a file using Markdown.\""
 echo "   ag -o relativity.md \"Explain the theory of relativity simply.\""
 echo "   ag -c \"What was the last thing I asked you?\""
 echo ""
-print_info "Enjoy your AI assistant!"
+print_info ENJOY
 
 exit 0
