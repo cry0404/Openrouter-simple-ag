@@ -1,5 +1,6 @@
 # OpenRouter Simple AG - Your Command-Line AI Assistant
 
+##这只是一份由 ai 写出来的玩具，难免有所疏漏，主要是供我每次配环境使用😂
 `ag` (AI Generalist) is a simple yet powerful command-line tool written in Fish shell script that allows you to interact with AI models via the OpenRouter API directly from your terminal. It supports streaming responses, managing multiple conversation contexts, rendering Markdown output, and saving conversations.
 
 Inspired by the need for a straightforward, terminal-based AI interaction tool without heavy dependencies.
@@ -15,16 +16,18 @@ Inspired by the need for a straightforward, terminal-based AI interaction tool w
     *   List available contexts (`-l`).
     *   Delete specific contexts (`-d <name>`).
     *   Default mode is ephemeral (no context loaded or saved).
-*   **Markdown Rendering:**
+*   **Markdown Rendering & Saving:**
     *   Optionally render Markdown responses directly in the terminal using `rich-cli` and `less` (`-m`).
-    *   Automatically requests Markdown format from the AI when saving to a file (`-o`).
-*   **Save Responses:** Save the AI's current response to a specified file (`-o <path>`).
-    *   Saves as Markdown if `-o` is used.
-    *   Supports absolute paths, relative paths, and a configurable default directory (`$AG_DEFAULT_OUTPUT_DIR`).
+    *   Automatically requests Markdown format from the AI when saving to a file (`-o <path>`).
+    *   Saves the Markdown response to the specified file.
     *   Attempts to open the saved Markdown file using `rich` after saving.
+*   **Flexible File Saving:**
+    *   Supports absolute paths (`/path/to/file.md`), relative paths (`docs/file.md`), and filenames (saved to current dir or `$AG_DEFAULT_OUTPUT_DIR`).
+    *   Configurable default output directory (`$AG_DEFAULT_OUTPUT_DIR`).
+    *   Attempts to create necessary directories before saving (`mkdir -p`).
 *   **Customizable:** Easily change the default AI model or API endpoint within the script.
 *   **Lightweight:** Primarily relies on `fish`, `curl`, and `jq`. Markdown features require `rich-cli` and `less`.
-*   **Easy Setup:** Includes a one-click setup script for Debian/Ubuntu-based systems.
+*   **Easy Setup:** Includes a one-click setup script for Debian/Ubuntu-based systems with language selection.
 
 ## Installation (Debian/Ubuntu based systems)
 
@@ -32,11 +35,12 @@ An automated setup script is provided to install dependencies and the `ag` funct
 
 1.  **Download the Setup Script:**
     ```bash
-    curl -o setup_ag_tool.sh https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO_NAME/main/setup_ag_tool.sh
-    # Make sure to replace YOUR_USERNAME and YOUR_REPO_NAME with your actual GitHub details!
-    # Or simply clone the repository:
-    # git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-    # cd YOUR_REPO_NAME
+    # Download directly from your repository
+    curl -o setup_ag_tool.sh https://raw.githubusercontent.com/cry0404/Openrouter-simple-ag/main/setup_ag_tool.sh
+    # --- OR ---
+    # Clone the repository and navigate into it
+    # git clone https://github.com/cry0404/Openrouter-simple-ag.git
+    # cd Openrouter-simple-ag
     ```
 
 2.  **Make it Executable:**
@@ -45,6 +49,7 @@ An automated setup script is provided to install dependencies and the `ag` funct
     ```
 
 3.  **Run the Script:**
+    The script will first ask you to choose a language (English/Chinese) for instructions.
     *   **To install with Markdown support (recommended):**
         ```bash
         ./setup_ag_tool.sh
@@ -53,7 +58,7 @@ An automated setup script is provided to install dependencies and the `ag` funct
         ```bash
         ./setup_ag_tool.sh --no-rich
         ```
-    The script will prompt you to choose a language (English/Chinese) for setup instructions and install dependencies (`fish`, `jq`, `curl`, and optionally `pipx`, `rich-cli`, `less`) using `apt` and `pipx`. It will place the `ag.fish` script in `~/.config/fish/functions/`.
+    The script will install dependencies (`fish`, `jq`, `curl`, and optionally `pipx`, `rich-cli`, `less`) using `apt` and `pipx`. It will place the `ag.fish` script in `~/.config/fish/functions/`.
 
 4.  **Set API Key:** This is crucial! Set your OpenRouter API key as an environment variable. Run this in your terminal and **add it to your `~/.config/fish/config.fish` file** for persistence:
     ```fish
@@ -90,7 +95,7 @@ The basic syntax is: `ag [OPTIONS] "YOUR PROMPT"`
     ag -d learning_fish
     ```
 
-*   **Render Markdown response in the terminal:**
+*   **Render Markdown response in the terminal (without saving):**
     ```fish
     ag -m "Explain git merge vs rebase using Markdown."
     ```
@@ -134,9 +139,9 @@ The basic syntax is: `ag [OPTIONS] "YOUR PROMPT"`
 ## Troubleshooting
 
 *   **`command not found: ag`:** Ensure you have started a new Fish shell session after running the setup script. Check if `~/.config/fish/functions/ag.fish` exists.
-*   **`command not found: rich`:** If you intended to use Markdown features, ensure `rich-cli` was installed correctly (run `pipx list` or `pip list`) and that the directory containing `pipx` binaries (usually `~/.local/bin`) is in your `$PATH` (run `echo $PATH`). Restart your shell.
-*   **Permission Denied when saving (`-o`):** Check the permissions of the target directory (either the current working directory or `$AG_DEFAULT_OUTPUT_DIR`). Ensure your user has write access. Try saving to your home directory (`-o ~/response.md`).
-*   **Context not saving/loading:** Ensure the context directory (`~/.local/share/ag_contexts/`) is writable. Check the contents of the `.json` files within that directory to see if they are valid JSON arrays.
+*   **`command not found: rich`:** If you intended to use Markdown features (-m or -o), ensure `rich-cli` was installed correctly (run `pipx list` or `pip list`) and that the directory containing `pipx` binaries (usually `~/.local/bin`) is in your `$PATH` (run `echo $PATH`). Restart your shell.
+*   **Permission Denied when saving (`-o`):** Check the permissions of the target directory (either the current working directory or `$AG_DEFAULT_OUTPUT_DIR`, or an absolute path you specified). Ensure your user has write access. Try saving to your home directory (`-o ~/response.md`).
+*   **Context not saving/loading:** Ensure the context directory (`~/.local/share/ag_contexts/`) and its parent directories are writable by your user. Check the contents of the `.json` files within that directory to see if they are valid JSON arrays.
 
 ## Contributing
 
@@ -159,16 +164,18 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
     *   列出可用的上下文 (`-l`)。
     *   删除指定的上下文 (`-d <名称>`)。
     *   默认模式为即时对话（不加载也不保存上下文）。
-*   **Markdown 渲染:**
+*   **Markdown 渲染与保存:**
     *   可选地使用 `rich-cli` 和 `less` 在终端直接渲染 Markdown 响应 (`-m`)。
-    *   当使用 `-o` 保存文件时，会自动向 AI 请求 Markdown 格式。
-*   **保存响应:** 将 AI 当前的响应保存到指定文件 (`-o <路径>`)。
-    *   使用 `-o` 时默认保存为 Markdown。
-    *   支持绝对路径、相对路径以及可配置的默认目录 (`$AG_DEFAULT_OUTPUT_DIR`)。
+    *   当使用 `-o <路径>` 保存文件时，会自动向 AI 请求 Markdown 格式。
+    *   将 Markdown 响应保存到指定文件。
     *   保存后尝试使用 `rich` 打开保存的 Markdown 文件。
+*   **灵活的文件保存:**
+    *   支持绝对路径 (`/path/to/file.md`)、相对路径 (`docs/file.md`) 以及仅文件名（保存到当前目录或 `$AG_DEFAULT_OUTPUT_DIR`）。
+    *   可配置的默认输出目录 (`$AG_DEFAULT_OUTPUT_DIR`)。
+    *   保存前尝试创建必要的目录 (`mkdir -p`)。
 *   **可定制:** 可在脚本中轻松更改默认 AI 模型或 API 端点。
 *   **轻量级:** 主要依赖 `fish`, `curl`, `jq`。Markdown 功能需要 `rich-cli` 和 `less`。
-*   **易于设置:** 为基于 Debian/Ubuntu 的系统提供了一键安装脚本。
+*   **易于设置:** 为基于 Debian/Ubuntu 的系统提供了一键安装脚本，并支持语言选择。
 
 ### 安装 (基于 Debian/Ubuntu 的系统)
 
@@ -176,11 +183,12 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
 
 1.  **下载安装脚本:**
     ```bash
-    curl -o setup_ag_tool.sh https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO_NAME/main/setup_ag_tool.sh
-    # 请确保将 YOUR_USERNAME 和 YOUR_REPO_NAME 替换为您的 GitHub 用户名和仓库名！
-    # 或者直接克隆仓库:
-    # git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-    # cd YOUR_REPO_NAME
+    # 直接从您的仓库下载
+    curl -o setup_ag_tool.sh https://raw.githubusercontent.com/cry0404/Openrouter-simple-ag/main/setup_ag_tool.sh
+    # --- 或者 ---
+    # 克隆仓库并进入目录
+    # git clone https://github.com/cry0404/Openrouter-simple-ag.git
+    # cd Openrouter-simple-ag
     ```
 
 2.  **使其可执行:**
@@ -189,6 +197,7 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
     ```
 
 3.  **运行脚本:**
+    脚本会首先提示您选择安装语言 (英文/中文)。
     *   **安装并包含 Markdown 支持 (推荐):**
         ```bash
         ./setup_ag_tool.sh
@@ -197,7 +206,7 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
         ```bash
         ./setup_ag_tool.sh --no-rich
         ```
-    脚本将提示您选择安装语言 (英文/中文)，并使用 `apt` 和 `pipx` 安装依赖项 (`fish`, `jq`, `curl`, 以及可选的 `pipx`, `rich-cli`, `less`)。它会将 `ag.fish` 脚本放置在 `~/.config/fish/functions/`。
+    脚本将使用 `apt` 和 `pipx` 安装依赖项 (`fish`, `jq`, `curl`, 以及可选的 `pipx`, `rich-cli`, `less`)。它会将 `ag.fish` 脚本放置在 `~/.config/fish/functions/`。
 
 4.  **设置 API 密钥:** 非常重要！将您的 OpenRouter API 密钥设置为环境变量。在终端中运行此命令，并**将其添加到您的 `~/.config/fish/config.fish` 文件中**以持久化：
     ```fish
@@ -234,7 +243,7 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
     ag -d 学习fish
     ```
 
-*   **在终端渲染 Markdown 响应:**
+*   **在终端渲染 Markdown 响应 (不保存):**
     ```fish
     ag -m "用 Markdown 解释 git merge 和 rebase 的区别。"
     ```
@@ -278,9 +287,9 @@ Feel free to open issues or pull requests if you have suggestions or find bugs!
 ### 问题排查
 
 *   **`command not found: ag`:** 确保在运行安装脚本后已启动新的 Fish shell 会话。检查 `~/.config/fish/functions/ag.fish` 是否存在。
-*   **`command not found: rich`:** 如果您想使用 Markdown 功能，请确保 `rich-cli` 已正确安装 (运行 `pipx list` 或 `pip list`)，并且包含 `pipx` 二进制文件的目录 (通常是 `~/.local/bin`) 在您的 `$PATH` 中 (运行 `echo $PATH`)。重启您的 shell。
-*   **保存时权限被拒绝 (`-o`):** 检查目标目录（当前工作目录或 `$AG_DEFAULT_OUTPUT_DIR`）的权限。确保您的用户具有写入权限。尝试保存到您的主目录 (`-o ~/response.md`)。
-*   **上下文未保存/加载:** 确保上下文目录 (`~/.local/share/ag_contexts/`) 可写。检查该目录下的 `.json` 文件内容是否为有效的 JSON 数组。
+*   **`command not found: rich`:** 如果您想使用 Markdown 功能 (-m 或 -o)，请确保 `rich-cli` 已正确安装 (运行 `pipx list` 或 `pip list`)，并且包含 `pipx` 二进制文件的目录 (通常是 `~/.local/bin`) 在您的 `$PATH` 中 (运行 `echo $PATH`)。重启您的 shell。
+*   **保存时权限被拒绝 (`-o`):** 检查目标目录（当前工作目录、`$AG_DEFAULT_OUTPUT_DIR` 或您指定的绝对路径）的权限。确保您的用户具有写入权限。尝试保存到您的主目录 (`-o ~/response.md`)。
+*   **上下文未保存/加载:** 确保上下文目录 (`~/.local/share/ag_contexts/`) 及其父目录对您的用户可写。检查该目录下的 `.json` 文件内容是否为有效的 JSON 数组。
 
 ### 贡献
 这只是一个由 ai 生成的小玩具，难免有许多漏洞，你可以来尝试修改使其变得更加方便！
