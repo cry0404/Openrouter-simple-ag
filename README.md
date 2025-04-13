@@ -73,7 +73,7 @@
 1. 运行安装脚本，但告诉它你受够了：
 
    ```bash
-   ./setup_ai_tool.sh --uninstall
+   ./ai.sh --uninstall
    ```
 
 2. 脚本会把 `ai.fish` 和所有的 `ai<N>.fish` 文件都去掉。没啦 : (
