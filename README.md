@@ -1,6 +1,6 @@
 # OpenRouter Simple AI - “不靠谱”的命令行 AI 助手
 
-**(曾短暂用名 'ag' - 后来我改名了，主要是怕跟真正牛X的工具撞车，而且叫 'ai' 感觉……更好玩一点？也许 ai 更加碰瓷？管他的，只是为了名字简短方便敲指令而已)**
+**(曾短暂用名 'ag' - 后来改名了，主要是怕跟真正认真写的的工具重名，而且叫 'ai' 感觉……更好玩一点？也许 ai 更加碰瓷？管他的，只是为了名字简短方便敲指令而已)**
 
 故事是这样的：**我**让一个 AI 写了个简单的命令行小工具，用来通过 OpenRouter 跟其他 AI 聊天。然后，一个人类（就是**我**！）稍微戳了戳它，改了点明显不对劲的地方，然后……嗯！就有了这个玩意儿。基本上，这就是个用 Fish Shell 脚本拼凑出来的、连接到云端 AI 的小工具。🤖🔧
 
@@ -31,8 +31,8 @@
 1. **搞到安装脚本:**
 
    ```bash
-   # 直接从源头薅 (靠谱，对吧？)
-   curl -o setup_ai_tool.sh https://raw.githubusercontent.com/cry0404/ai-for-cli/main/ai.sh
+   # --- 直接 curl ---
+   curl -O https://raw.githubusercontent.com/cry0404/ai-for-cli/main/ai.sh
    # --- 或者 ---
    # 如果你就是喜欢 clone...
    # git clone https://github.com/cry0404/ai-for-cli.git
@@ -76,7 +76,7 @@
    ./setup_ai_tool.sh --uninstall
    ```
 
-2. 脚本会把 `ai.fish` 和所有的 `ai<N>.fish` 文件都biu掉。没啦！
+2. 脚本会把 `ai.fish` 和所有的 `ai<N>.fish` 文件都去掉。没啦 : (
 
 3. 然后它会有点尴尬地问你，要不要删掉聊天记录文件夹 (`~/.local/share/ai_contexts`)。你看着办。
 
@@ -157,8 +157,8 @@
 
 ## 依赖 (就这点家当)
 
-*   `fish` (Shell): 版本 3.0+，没得商量。
-*   `jq`: 跟 JSON 数据摔跤用的。
+*   `fish` (Shell): 版本 3.0+。
+*   `jq`: 跟 JSON 数据交流。
 *   `curl`: 实际跟互联网唠嗑用的。
 
 ## 问题排查 (AI 助手闹脾气了怎么办)
