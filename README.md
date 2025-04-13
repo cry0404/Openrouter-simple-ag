@@ -22,7 +22,7 @@
 *   **指定“大脑”**: 每个 `ai<N>` 命令都绑定了一个特定的模型 (用 `ai -m` 查看谁是谁)。
 *   **手痒可改 (风险自负)**: 你*可以试着*通过编辑文件来更改每个 `ai<N>` 用哪个模型 (详情见下)。
 *   **轻量级选手**: 就靠 `fish`, `curl`, `jq` 运行。如果这都能让你电脑卡，那问题可能有点大。
-*   **安装 & 跑路还算方便**: 带了个脚本，*应该*能在 Debian/Ubuntu 上跑通，还附赠“哎呀妈呀，快给我删了！”的卸载选项。
+*   **安装 & 跑路还算方便**: 带了个脚本，*应该*能在 Debian/Ubuntu 上跑通，还附赠的卸载选项。
 
 ## 安装 (抓稳了！)
 
@@ -32,10 +32,10 @@
 
    ```bash
    # 直接从源头薅 (靠谱，对吧？)
-   curl -o setup_ai_tool.sh https://raw.githubusercontent.com/cry0404/Openrouter-simple-ag/main/setup_ai_tool.sh
+   curl -o setup_ai_tool.sh https://raw.githubusercontent.com/cry0404/ai-for-cli/main/ai.sh
    # --- 或者 ---
    # 如果你就是喜欢 clone...
-   # git clone https://github.com/cry0404/Openrouter-simple-ag.git
+   # git clone https://github.com/cry0404/ai-for-cli.git
    # cd Openrouter-simple-ag
    # (如果你 clone 了，请确保用的是仓库里的 setup_ai_tool.sh)
    ```
@@ -43,18 +43,18 @@
 2. **赋予它运行的权力 (危险动作！):**
 
    ```bash
-   chmod +x setup_ai_tool.sh
+   chmod +x ai.sh
    ```
 
 3. **运行这个“神奇”脚本:**
 
    ```bash
-   ./setup_ai_tool.sh
+   ./ai.sh
    ```
 
    它会尝试用 `apt` 安装 `fish`, `jq`, `curl`。然后，它会往 Fish 函数的神圣文件夹 (`~/.config/fish/functions/`) 里扔一堆 `.fish` 文件 (`ai.fish`, `ai1.fish`, ... `ai5.fish`)。
 
-   *   **注意！** 你需要 Fish Shell 3.0 或更高版本。如果你还在用老古董版本，这脚本可能会一脸懵逼地看着你。
+   *   **注意！** 你需要 Fish Shell 3.0 或更高版本。如果你还在用老古董版本，这脚本只会无奈的报错。
 
 4. **献祭 API 密钥:** 这步没得商量。你需要一个 OpenRouter API 密钥。把它设成环境变量。在终端里运行下面这行，并且**郑重建议你把它加到 `~/.config/fish/config.fish` 文件里**，否则你每次都得重新设。
 
@@ -128,9 +128,9 @@
   ai1 -h  # ai1 的专属帮助
   ```
 
-## 配置 & 折腾 (胆子大的来)
+## 配置 & 折腾 
 
-* **API 密钥**: 看安装步骤 4。设置 `OPENROUTER_API_KEY`。必须的。
+* **API 密钥**: 看安装步骤 4。设置 `OPENROUTER_API_KEY`。
 
 * **更换模型 (高级作死技巧):**
 
@@ -175,5 +175,5 @@
 
 听着，这玩意儿是 AI 生成的，然后被**我**稍微收拾了一下。里面八成全是坑。欢迎你把它 clone 下去，随便改，让它变得不那么烂，加点功能，或者就是指着它哈哈大笑。欢迎提交 Pull Request，但别指望太多！记住，它只是个玩具。
 
-是的，就连这个 Readme.md 都是 AI 写的，你还能指望 cry 干什么呢😂
+是的，就连这个 Readme.md 都是 AI 写的，你还能指望这个 cry 干些什么呢！
 
