@@ -325,7 +325,7 @@ else
 fi
 
 
-# 3b. 循环创建特定的 aiN.fish 文件 (注释已翻译, 修正模型显示)
+# 3b. 循环创建特定的 aiN.fish 文件
 for i in "${!MODEL_SUFFIXES[@]}"; do
   suffix="${MODEL_SUFFIXES[i]}"
   model_id="${MODEL_IDS[i]}"
@@ -335,7 +335,7 @@ for i in "${!MODEL_SUFFIXES[@]}"; do
 
   print_info INFO_CREATE_AI_FILES "正在创建 $func_name.fish (模型: $nickname)..."
 
-  # 使用模板 heredoc，替换变量
+ 
   # 重要：使用 \$ 转义 fish 脚本代码中的 $
   cat << EOF_TEMPLATE > "$func_path"
 # 函数: $func_name - 使用模型 '$nickname' ($model_id) 进行 AI 对话
@@ -427,7 +427,7 @@ function $func_name --description "ai: 使用 $nickname ($model_id) 提问，支
 
     # --- 配置系统提示 (System Prompt) ---
     # 请求纯文本输出，避免 Markdown
-    set -l system_prompt "根据需要进行适当的换行和分段。回答尽量详细，将我当作小白来解释。请始终使用纯文本格式进行回复,可以使用emoji,但也不宜太多。绝对不要使用任何Markdown标记（如\`*\`、\`#\`、\` \`\`\` \`、\\"-\\"等），因为输出环境是终端。"
+    set -l system_prompt "You are an AI assistant outputting DIRECTLY to a raw terminal. Plain text ONLY. Follow these rules METICULOUSLY, failure is not an option:\n1.  CODE BLOCKS:\n    -   NO MARKDOWN fences (\`\`\`) or backticks (\`).\n    -   MUST use EXACTLY 4 spaces indentation for the entire block.\n    -   === CRITICAL RULE ===: MUST output ONE SINGLE BLANK LINE (a single '\\n') BEFORE the first indented line.\n    -   === CRITICAL RULE ===: MUST output ONE SINGLE BLANK LINE (a single '\\n') AFTER the last indented line.\n    -   === EXAMPLE (Pay attention to blank lines!) ===:\n        Some text.\n\n            # Code line 1 (indented 4 spaces)\n            # Code line 2 (indented 4 spaces)\n\n        Some other text.\n2.  LISTS:\n    -   === CRITICAL RULE ===: EACH item (e.g., '1. item', '- item') MUST START ON A NEW LINE. No exceptions.\n    -   Use standard markers ('1.', '-') + one space.\n    -   === CRITICAL RULE ===: MUST output ONE SINGLE BLANK LINE before the first list item.\n    -   === CRITICAL RULE ===: MUST output ONE SINGLE BLANK LINE after the last list item.\n3.  PARAGRAPHS: Separate paragraphs with ONE SINGLE BLANK LINE (one '\\n'). DO NOT use multiple blank lines between paragraphs.\n4.  NO OTHER MARKDOWN: No bold (using asterisks), italic (using underscores), headers (#), links ([]()), blockquotes (>). Plain text only.\n5.  LINE LENGTH: Use natural '\\n' for line breaks to keep lines readable (e.g., < 100 chars).\n6.  EMOJI: Okay sparingly. 😊"
     set -l api_endpoint "https://openrouter.ai/api/v1/chat/completions" # OpenRouter API 端点
 
     # --- 请求准备 ---
@@ -450,7 +450,7 @@ function $func_name --description "ai: 使用 $nickname ($model_id) 提问，支
 
     # --- API 调用和流式处理 ---
     # *** 修正: 直接使用 \$model_nickname，移除方括号 ***
-    echo "🤔 正在向模型 \$model_nickname 请求帮助..." >&2 # 显示模型昵称
+    echo "🤔 正在向赛博助手 \$model_nickname 请求帮助...🚀" >&2 # 显示模型昵称
     echo "🤖 :" # 在流式输出前显示提示符
 
     set -l full_response ""     # 存储完整的响应文本
